@@ -56,9 +56,24 @@ pm2 delete funny-tourism-backend
 ## Other Safety Rules
 
 ### Database Credentials
+- ✅ **NEVER hardcode credentials in scripts**
+- ✅ **ALWAYS use environment variables** (process.env.*)
 - ✅ Never commit `.env` files
 - ✅ Never commit files with passwords
 - ✅ Always use `.gitignore`
+- ✅ Use `.env.example` with placeholders only
+
+**❌ WRONG - Hardcoded:**
+```javascript
+const password = 'MySecretPassword123'; // NEVER DO THIS!
+const email = 'admin@example.com'; // NEVER DO THIS!
+```
+
+**✅ CORRECT - Environment Variables:**
+```javascript
+const password = process.env.ADMIN_PASSWORD;
+const email = process.env.ADMIN_EMAIL;
+```
 
 ### Server Operations
 - ✅ Always backup before making database changes
