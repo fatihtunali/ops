@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:vertabelo.com)",
+      "WebFetch(domain:www.red-gate.com)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
