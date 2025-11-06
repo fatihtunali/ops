@@ -61,11 +61,21 @@ app.get('/api', (req, res) => {
 
 // Import routes
 const authRoutes = require('./src/routes/auth');
+const clientRoutes = require('./src/routes/clients');
+const hotelRoutes = require('./src/routes/hotels');
+const tourSupplierRoutes = require('./src/routes/tourSuppliers');
+const guideRoutes = require('./src/routes/guides');
+const vehicleRoutes = require('./src/routes/vehicles');
 // const userRoutes = require('./src/routes/users');
 // ... more routes will be added
 
 // Use routes
 app.use('/api/auth', authRoutes);
+app.use('/api/clients', clientRoutes);
+app.use('/api/hotels', hotelRoutes);
+app.use('/api/tour-suppliers', tourSupplierRoutes);
+app.use('/api/guides', guideRoutes);
+app.use('/api/vehicles', vehicleRoutes);
 // app.use('/api/users', userRoutes);
 // ... more routes will be added
 
