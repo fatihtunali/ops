@@ -74,3 +74,6 @@ docker-volumes/
 !database/backups/.gitkeep
 !docs/guides/.gitkeep
 !docs/api/.gitkeep
+# Claude settings
+.claude/
+*.bak
