@@ -22,6 +22,10 @@ frontend/build/
 database/backups/*.sql
 database/backups/*.dump
 
+# Database credentials (NEVER commit real credentials!)
+database/DATABASE_CONNECTION.md
+DATABASE_CONNECTION.md
+
 # OS files
 .DS_Store
 Thumbs.db
