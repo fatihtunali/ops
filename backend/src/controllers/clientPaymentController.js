@@ -21,7 +21,7 @@ exports.getAll = async (req, res) => {
         cp.reference_number,
         cp.notes,
         cp.created_at,
-        b.booking_number,
+        b.booking_code,
         c.name as client_name
       FROM client_payments cp
       LEFT JOIN bookings b ON cp.booking_id = b.id

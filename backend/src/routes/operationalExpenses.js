@@ -4,6 +4,13 @@ const expenseController = require('../controllers/operationalExpenseController')
 const { auth } = require('../middleware/auth');
 
 /**
+ * @route   GET /api/operational-expenses/summary
+ * @desc    Get expense summary by year
+ * @access  Private
+ */
+router.get('/summary', auth, expenseController.getExpenseSummary);
+
+/**
  * @route   GET /api/operational-expenses/recurring
  * @desc    Get all recurring expenses
  * @access  Private

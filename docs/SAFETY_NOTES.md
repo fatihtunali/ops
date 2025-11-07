@@ -55,25 +55,54 @@ pm2 delete funny-tourism-backend
 
 ## Other Safety Rules
 
-### Database Credentials
+### Database Credentials & Secrets Management
+
+⚠️ **CRITICAL: NEVER EXPOSE SECRETS TO GIT** ⚠️
+
+**Security Rules:**
 - ✅ **NEVER hardcode credentials in scripts**
 - ✅ **ALWAYS use environment variables** (process.env.*)
 - ✅ Never commit `.env` files
-- ✅ Never commit files with passwords
+- ✅ Never commit files with passwords, API keys, tokens
 - ✅ Always use `.gitignore`
 - ✅ Use `.env.example` with placeholders only
+- ✅ Run security scanner before commits
+- ✅ All secrets must come from process.env
 
-**❌ WRONG - Hardcoded:**
+**❌ WRONG - Hardcoded Secrets:**
 ```javascript
 const password = 'MySecretPassword123'; // NEVER DO THIS!
-const email = 'admin@example.com'; // NEVER DO THIS!
+const apiKey = 'sk_live_abc123xyz'; // NEVER DO THIS!
+const dbUrl = 'postgresql://user:pass@host/db'; // NEVER DO THIS!
+const smtpKey = 'xkeysib-abc123'; // NEVER DO THIS!
 ```
 
 **✅ CORRECT - Environment Variables:**
 ```javascript
 const password = process.env.ADMIN_PASSWORD;
-const email = process.env.ADMIN_EMAIL;
+const apiKey = process.env.API_KEY;
+const dbUrl = process.env.DATABASE_URL;
+const smtpKey = process.env.BREVO_SMTP_KEY;
 ```
+
+**Security Scanner:**
+```bash
+# Run before every commit
+cd backend && node scripts/check-secrets.js
+
+# Should output: ✅ No hardcoded secrets detected!
+```
+
+**What Counts as a Secret:**
+- Passwords (any kind)
+- API Keys (Stripe, Brevo, AWS, etc.)
+- Database credentials
+- SMTP credentials
+- JWT secrets
+- OAuth tokens
+- Private keys
+- Connection strings with credentials
+- Any authentication tokens
 
 ### Server Operations
 - ✅ Always backup before making database changes

@@ -18,7 +18,7 @@ exports.getAllBookingTransfers = async (req, res) => {
         bt.cost_price, bt.sell_price, bt.margin,
         bt.payment_status, bt.paid_amount, bt.confirmation_number,
         bt.voucher_issued, bt.notes, bt.created_at,
-        ts.company_name as supplier_name,
+        ts.name as supplier_name,
         v.vehicle_number
       FROM booking_transfers bt
       LEFT JOIN tour_suppliers ts ON bt.supplier_id = ts.id

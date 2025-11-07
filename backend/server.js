@@ -83,8 +83,8 @@ const bookingTransferRoutes = require('./src/routes/bookingTransfers');
 const passengerRoutes = require('./src/routes/passengers');
 const voucherRoutes = require('./src/routes/vouchers');
 const operationalExpenseRoutes = require('./src/routes/operationalExpenses');
-// const userRoutes = require('./src/routes/users');
-// ... more routes will be added
+const userRoutes = require('./src/routes/users');
+const reportRoutes = require('./src/routes/reports');
 
 // Use routes
 app.use('/api/client-payments', clientPaymentRoutes);
@@ -103,8 +103,8 @@ app.use('/api/booking-transfers', bookingTransferRoutes);
 app.use('/api/passengers', passengerRoutes);
 app.use('/api/vouchers', voucherRoutes);
 app.use('/api/operational-expenses', operationalExpenseRoutes);
-// app.use('/api/users', userRoutes);
-// ... more routes will be added
+app.use('/api/users', userRoutes);
+app.use('/api/reports', reportRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

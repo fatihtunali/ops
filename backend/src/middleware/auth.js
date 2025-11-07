@@ -84,4 +84,8 @@ const authorize = (...allowedRoles) => {
   };
 };
 
-module.exports = { auth, authorize };
+// Alias exports for consistency
+const authenticateToken = auth;
+const requireRole = authorize;
+
+module.exports = { auth, authorize, authenticateToken, requireRole };

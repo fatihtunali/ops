@@ -54,7 +54,7 @@ exports.getAllBookingTours = async (req, res) => {
         bt.*,
         ts.name as supplier_name,
         g.name as guide_name,
-        v.plate_number as vehicle_plate
+        v.vehicle_number as vehicle_plate
       FROM booking_tours bt
       LEFT JOIN tour_suppliers ts ON bt.supplier_id = ts.id
       LEFT JOIN guides g ON bt.guide_id = g.id

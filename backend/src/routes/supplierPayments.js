@@ -11,6 +11,13 @@ const { auth } = require('../middleware/auth');
 router.get('/stats', auth, supplierPaymentController.getStats);
 
 /**
+ * @route   GET /api/supplier-payments/summary
+ * @desc    Get supplier payment summary (alias for stats)
+ * @access  Private
+ */
+router.get('/summary', auth, supplierPaymentController.getStats);
+
+/**
  * @route   GET /api/supplier-payments
  * @desc    Get all supplier payments with optional filters (status, supplier_type, due_date_from, due_date_to, booking_id)
  * @access  Private

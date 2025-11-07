@@ -5,12 +5,15 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Environment variables
+# Environment variables - NEVER COMMIT THESE!
 .env
 .env.local
 .env.development
 .env.production
 .env.test
+*.env
+.env.*
+!.env.example
 
 # Build output
 backend/dist/
@@ -51,8 +54,11 @@ coverage/
 tmp/
 temp/
 
-# PDF vouchers generated
+# Generated files - vouchers and exports
+backend/vouchers/*.pdf
+backend/exports/*.xlsx
 vouchers/*.pdf
+exports/*.xlsx
 
 # Uploads
 uploads/*

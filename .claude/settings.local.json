@@ -3,7 +3,10 @@
     "allow": [
       "WebSearch",
       "WebFetch(domain:vertabelo.com)",
-      "WebFetch(domain:www.red-gate.com)"
+      "WebFetch(domain:www.red-gate.com)",
+      "Bash(npm start)",
+      "Bash(timeout:*)",
+      "Bash(curl:*)"
     ],
     "deny": [],
     "ask": []

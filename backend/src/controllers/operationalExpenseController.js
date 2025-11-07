@@ -519,3 +519,74 @@ exports.deleteExpense = async (req, res) => {
     });
   }
 };
+
+/**
+ * Get expense summary by year
+ * GET /api/operational-expenses/summary?year=2025
+ */
+exports.getExpenseSummary = async (req, res) => {
+  try {
+    const { year = new Date().getFullYear() } = req.query;
+
+    // Get total expenses by category for the year
+    const summaryQuery = `
+      SELECT
+        category,
+        COUNT(*) as count,
+        COALESCE(SUM(amount), 0) as total_amount,
+        COALESCE(AVG(amount), 0) as avg_amount
+      FROM operational_expenses
+      WHERE EXTRACT(YEAR FROM expense_date) = $1
+      GROUP BY category
+      ORDER BY total_amount DESC
+    `;
+
+    const summaryResult = await query(summaryQuery, [year]);
+
+    // Get monthly breakdown
+    const monthlyQuery = `
+      SELECT
+        EXTRACT(MONTH FROM expense_date) as month,
+        COALESCE(SUM(amount), 0) as total_amount,
+        COUNT(*) as count
+      FROM operational_expenses
+      WHERE EXTRACT(YEAR FROM expense_date) = $1
+      GROUP BY EXTRACT(MONTH FROM expense_date)
+      ORDER BY month
+    `;
+
+    const monthlyResult = await query(monthlyQuery, [year]);
+
+    // Get total summary
+    const totalQuery = `
+      SELECT
+        COUNT(*) as total_count,
+        COALESCE(SUM(amount), 0) as total_amount,
+        COALESCE(SUM(CASE WHEN is_recurring THEN amount ELSE 0 END), 0) as recurring_amount,
+        COALESCE(SUM(CASE WHEN NOT is_recurring THEN amount ELSE 0 END), 0) as one_time_amount
+      FROM operational_expenses
+      WHERE EXTRACT(YEAR FROM expense_date) = $1
+    `;
+
+    const totalResult = await query(totalQuery, [year]);
+
+    res.json({
+      success: true,
+      data: {
+        year: parseInt(year),
+        summary: totalResult.rows[0],
+        by_category: summaryResult.rows,
+        by_month: monthlyResult.rows
+      }
+    });
+  } catch (error) {
+    console.error('Get expense summary error:', error);
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'Failed to get expense summary'
+      }
+    });
+  }
+};
