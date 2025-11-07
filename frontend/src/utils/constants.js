@@ -242,8 +242,8 @@ export const TOUR_DURATIONS = [
 // Date Formats
 export const DATE_FORMAT = 'yyyy-MM-dd';
 export const DATETIME_FORMAT = 'yyyy-MM-dd HH:mm';
-export const DISPLAY_DATE_FORMAT = 'MMM dd, yyyy';
-export const DISPLAY_DATETIME_FORMAT = 'MMM dd, yyyy HH:mm';
+export const DISPLAY_DATE_FORMAT = 'dd.MM.yyyy';
+export const DISPLAY_DATETIME_FORMAT = 'dd.MM.yyyy HH:mm';
 
 // Pagination
 export const DEFAULT_PAGE_SIZE = 20;

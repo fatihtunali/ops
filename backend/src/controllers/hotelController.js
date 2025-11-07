@@ -117,7 +117,6 @@ exports.create = async (req, res) => {
       contact_person,
       contact_email,
       contact_phone,
-      standard_cost_per_night,
       notes,
       status
     } = req.body;
@@ -144,22 +143,11 @@ exports.create = async (req, res) => {
       });
     }
 
-    // Validate cost if provided
-    if (standard_cost_per_night && (isNaN(standard_cost_per_night) || parseFloat(standard_cost_per_night) < 0)) {
-      return res.status(400).json({
-        success: false,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Standard cost per night must be a valid positive number'
-        }
-      });
-    }
-
     const result = await query(
       `INSERT INTO hotels (
         name, city, country, contact_person, contact_email,
-        contact_phone, standard_cost_per_night, notes, status
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        contact_phone, notes, status
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       RETURNING *`,
       [
         name,
@@ -168,7 +156,6 @@ exports.create = async (req, res) => {
         contact_person || null,
         contact_email || null,
         contact_phone || null,
-        standard_cost_per_night || null,
         notes || null,
         status || 'active'
       ]
@@ -222,7 +209,6 @@ exports.update = async (req, res) => {
       contact_person,
       contact_email,
       contact_phone,
-      standard_cost_per_night,
       notes,
       status
     } = req.body;
@@ -265,19 +251,6 @@ exports.update = async (req, res) => {
       });
     }
 
-    // Validate cost if provided
-    if (standard_cost_per_night !== undefined && standard_cost_per_night !== null) {
-      if (isNaN(standard_cost_per_night) || parseFloat(standard_cost_per_night) < 0) {
-        return res.status(400).json({
-          success: false,
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: 'Standard cost per night must be a valid positive number'
-          }
-        });
-      }
-    }
-
     // Build update query dynamically
     const updates = [];
     const params = [];
@@ -311,11 +284,6 @@ exports.update = async (req, res) => {
     if (contact_phone !== undefined) {
       updates.push(`contact_phone = $${paramCount}`);
       params.push(contact_phone || null);
-      paramCount++;
-    }
-    if (standard_cost_per_night !== undefined) {
-      updates.push(`standard_cost_per_night = $${paramCount}`);
-      params.push(standard_cost_per_night || null);
       paramCount++;
     }
     if (notes !== undefined) {

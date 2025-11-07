@@ -89,3 +89,4 @@ docker-volumes/
 .claude/
 *.bak
 nul
+backend/test-dashboard.js

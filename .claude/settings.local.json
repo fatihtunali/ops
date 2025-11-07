@@ -6,7 +6,9 @@
       "WebFetch(domain:www.red-gate.com)",
       "Bash(npm start)",
       "Bash(timeout:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(cat:*)",
+      "Bash(node -c:*)"
     ],
     "deny": [],
     "ask": []

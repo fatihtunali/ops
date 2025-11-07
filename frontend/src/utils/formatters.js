@@ -15,16 +15,16 @@ import {
 /**
  * Format currency with symbol
  * @param {number} amount - Amount to format
- * @param {string} currency - Currency code (USD, EUR, TRY, GBP)
+ * @param {string} currency - Currency code (EUR, USD, TRY, GBP)
  * @param {number} decimals - Number of decimal places (default: 2)
  * @returns {string} Formatted currency string
  */
-export const formatCurrency = (amount, currency = 'USD', decimals = 2) => {
+export const formatCurrency = (amount, currency = 'EUR', decimals = 2) => {
   if (amount === null || amount === undefined || isNaN(amount)) {
-    return `${CURRENCY_SYMBOLS[currency] || '$'}0.00`;
+    return `${CURRENCY_SYMBOLS[currency] || '€'}0.00`;
   }
 
-  const symbol = CURRENCY_SYMBOLS[currency] || '$';
+  const symbol = CURRENCY_SYMBOLS[currency] || '€';
   const formatted = Number(amount).toFixed(decimals);
   const parts = formatted.split('.');
   parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');

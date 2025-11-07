@@ -67,7 +67,6 @@ CREATE TABLE hotels (
     contact_person VARCHAR(255),
     contact_email VARCHAR(255),
     contact_phone VARCHAR(50),
-    standard_cost_per_night DECIMAL(10,2), -- typical cost
     notes TEXT,
     status VARCHAR(20) DEFAULT 'active',
     created_at TIMESTAMP DEFAULT NOW(),
@@ -77,6 +76,43 @@ CREATE TABLE hotels (
 
 CREATE INDEX idx_hotels_city ON hotels(city);
 CREATE INDEX idx_hotels_status ON hotels(status);
+
+-- Hotel Seasonal Rates (supports multiple pricing periods per hotel)
+CREATE TABLE hotel_seasonal_rates (
+    id SERIAL PRIMARY KEY,
+    hotel_id INTEGER REFERENCES hotels(id) ON DELETE CASCADE,
+
+    -- Season/Period information
+    season_name VARCHAR(100) NOT NULL, -- e.g., "Summer 2025", "High Season", "Christmas Period"
+    valid_from DATE NOT NULL,
+    valid_to DATE NOT NULL,
+
+    -- Pricing structure
+    price_per_person_double DECIMAL(10,2), -- per person in double room
+    price_single_supplement DECIMAL(10,2), -- supplement for single occupancy
+    price_per_person_triple DECIMAL(10,2), -- per person in triple room
+    price_child_0_2 DECIMAL(10,2), -- child 0-2.99 years with 2 adults
+    price_child_3_5 DECIMAL(10,2), -- child 3-5.99 years with 2 adults
+    price_child_6_11 DECIMAL(10,2), -- child 6-11.99 years with 2 adults
+
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+
+    CONSTRAINT chk_valid_date_range CHECK (valid_from <= valid_to),
+    CONSTRAINT chk_positive_prices CHECK (
+        price_per_person_double >= 0 AND
+        price_single_supplement >= 0 AND
+        price_per_person_triple >= 0 AND
+        price_child_0_2 >= 0 AND
+        price_child_3_5 >= 0 AND
+        price_child_6_11 >= 0
+    )
+);
+
+CREATE INDEX idx_hotel_seasonal_rates_hotel ON hotel_seasonal_rates(hotel_id);
+CREATE INDEX idx_hotel_seasonal_rates_dates ON hotel_seasonal_rates(valid_from, valid_to);
+CREATE INDEX idx_hotel_seasonal_rates_period ON hotel_seasonal_rates(hotel_id, valid_from, valid_to);
 
 -- Tour Suppliers
 CREATE TABLE tour_suppliers (
@@ -369,7 +405,7 @@ CREATE TABLE client_payments (
 
     payment_date DATE NOT NULL,
     amount DECIMAL(10,2) NOT NULL,
-    currency VARCHAR(10) DEFAULT 'USD',
+    currency VARCHAR(10) DEFAULT 'EUR',
     payment_method VARCHAR(50), -- 'cash', 'bank_transfer', 'credit_card', etc.
 
     reference_number VARCHAR(100),
@@ -394,7 +430,7 @@ CREATE TABLE supplier_payments (
     service_id INTEGER, -- references booking_hotels, booking_tours, etc.
 
     amount DECIMAL(10,2) NOT NULL,
-    currency VARCHAR(10) DEFAULT 'USD',
+    currency VARCHAR(10) DEFAULT 'EUR',
     payment_date DATE,
     due_date DATE,
     payment_method VARCHAR(50),
@@ -425,7 +461,7 @@ CREATE TABLE operational_expenses (
     category VARCHAR(100) NOT NULL, -- 'rent', 'salaries', 'utilities', 'marketing', etc.
     description VARCHAR(255),
     amount DECIMAL(10,2) NOT NULL,
-    currency VARCHAR(10) DEFAULT 'USD',
+    currency VARCHAR(10) DEFAULT 'EUR',
 
     payment_method VARCHAR(50),
     reference_number VARCHAR(100),
