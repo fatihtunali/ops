@@ -30,6 +30,9 @@ database/DATABASE_CONNECTION.md
 DATABASE_CONNECTION.md
 database/LIVE_DATABASE_SNAPSHOT.md
 LIVE_DATABASE_SNAPSHOT.md
+database/scripts/cleanup_database_direct.js
+database/scripts/verify_cleanup.js
+database/scripts/cleanup_database.js
 
 # OS files
 .DS_Store
