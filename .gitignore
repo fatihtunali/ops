@@ -83,3 +83,4 @@ docker-volumes/
 # Claude settings
 .claude/
 *.bak
+nul

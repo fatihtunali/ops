@@ -46,6 +46,14 @@ router.get('/sales-by-client', reportController.getSalesByClient);
 router.get('/sales-by-service', reportController.getSalesByService);
 
 /**
+ * @route   GET /api/reports/sales-by-source
+ * @desc    Get sales breakdown by booking source (agent vs direct)
+ * @query   from_date, to_date (optional)
+ * @access  Private
+ */
+router.get('/sales-by-source', reportController.getSalesBySource);
+
+/**
  * @route   GET /api/reports/outstanding
  * @desc    Get outstanding receivables and payables
  * @access  Private

@@ -495,6 +495,66 @@ exports.getSalesByService = async (req, res) => {
   }
 };
 
+// GET /api/reports/sales-by-source
+exports.getSalesBySource = async (req, res) => {
+  try {
+    const { from_date, to_date } = req.query;
+
+    let whereClause = 'WHERE b.is_confirmed = true';
+    const params = [];
+
+    if (from_date && to_date) {
+      whereClause += ' AND b.confirmed_at >= $1 AND b.confirmed_at <= $2';
+      params.push(from_date, to_date);
+    }
+
+    const query = `
+      SELECT
+        COALESCE(b.booked_by, 'direct') as booking_source,
+        COUNT(b.id) as booking_count,
+        COALESCE(SUM(b.total_sell_price), 0) as total_revenue,
+        COALESCE(SUM(b.total_cost_price), 0) as total_costs,
+        COALESCE(SUM(b.gross_profit), 0) as total_profit,
+        COALESCE(AVG(b.total_sell_price), 0) as avg_booking_value
+      FROM bookings b
+      ${whereClause}
+      GROUP BY b.booked_by
+      ORDER BY total_revenue DESC
+    `;
+
+    const result = await pool.query(query, params);
+
+    res.json({
+      success: true,
+      data: {
+        period: from_date && to_date ? { from: from_date, to: to_date } : 'All time',
+        sources: result.rows.map(row => ({
+          booking_source: row.booking_source,
+          booking_count: parseInt(row.booking_count),
+          total_revenue: parseFloat(row.total_revenue),
+          total_costs: parseFloat(row.total_costs),
+          total_profit: parseFloat(row.total_profit),
+          avg_booking_value: parseFloat(row.avg_booking_value),
+          profit_margin_percentage: row.total_revenue > 0
+            ? ((row.total_profit / row.total_revenue) * 100).toFixed(2)
+            : 0
+        }))
+      }
+    });
+
+  } catch (error) {
+    console.error('Error generating sales by source report:', error);
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'Failed to generate sales by source report',
+        details: error.message
+      }
+    });
+  }
+};
+
 // GET /api/reports/outstanding
 exports.getOutstandingReport = async (req, res) => {
   try {

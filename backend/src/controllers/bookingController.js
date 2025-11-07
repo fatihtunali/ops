@@ -7,7 +7,7 @@ const { formatDateTime, formatDate } = require('../utils/formatters');
  */
 exports.getAll = async (req, res) => {
   try {
-    const { status, is_confirmed, client_id, travel_date_from, travel_date_to } = req.query;
+    const { status, is_confirmed, client_id, travel_date_from, travel_date_to, booked_by } = req.query;
 
     // Build dynamic query
     let queryText = `
@@ -16,6 +16,7 @@ exports.getAll = async (req, res) => {
         b.booking_code,
         b.client_id,
         c.name as client_name,
+        c.type as client_type,
         b.pax_count,
         b.travel_date_from,
         b.travel_date_to,
@@ -26,6 +27,10 @@ exports.getAll = async (req, res) => {
         b.gross_profit,
         b.payment_status,
         b.amount_received,
+        b.traveler_name,
+        b.traveler_email,
+        b.traveler_phone,
+        b.booked_by,
         b.created_at,
         b.confirmed_at,
         b.completed_at,
@@ -71,6 +76,13 @@ exports.getAll = async (req, res) => {
     if (travel_date_to) {
       queryText += ` AND b.travel_date_to <= $${paramCount}`;
       params.push(travel_date_to);
+      paramCount++;
+    }
+
+    // Filter by booked_by (agent/direct)
+    if (booked_by && ['agent', 'direct'].includes(booked_by)) {
+      queryText += ` AND b.booked_by = $${paramCount}`;
+      params.push(booked_by);
       paramCount++;
     }
 
@@ -124,6 +136,9 @@ exports.getById = async (req, res) => {
         b.booking_code,
         b.client_id,
         c.name as client_name,
+        c.type as client_type,
+        c.email as client_email,
+        c.phone as client_phone,
         b.pax_count,
         b.travel_date_from,
         b.travel_date_to,
@@ -134,6 +149,10 @@ exports.getById = async (req, res) => {
         b.gross_profit,
         b.payment_status,
         b.amount_received,
+        b.traveler_name,
+        b.traveler_email,
+        b.traveler_phone,
+        b.booked_by,
         b.created_at,
         b.confirmed_at,
         b.completed_at,
@@ -201,6 +220,10 @@ exports.create = async (req, res) => {
       gross_profit,
       payment_status,
       amount_received,
+      traveler_name,
+      traveler_email,
+      traveler_phone,
+      booked_by,
       notes
     } = req.body;
 
@@ -240,6 +263,17 @@ exports.create = async (req, res) => {
         error: {
           code: 'VALIDATION_ERROR',
           message: 'Payment status must be one of: pending, partial, paid'
+        }
+      });
+    }
+
+    // Validate booked_by if provided
+    if (booked_by && !['agent', 'direct'].includes(booked_by)) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Booked by must be one of: agent, direct'
         }
       });
     }
@@ -289,10 +323,14 @@ exports.create = async (req, res) => {
         gross_profit,
         payment_status,
         amount_received,
+        traveler_name,
+        traveler_email,
+        traveler_phone,
+        booked_by,
         notes
       ) VALUES (
         generate_booking_code(),
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16
       )
       RETURNING
         id,
@@ -308,6 +346,10 @@ exports.create = async (req, res) => {
         gross_profit,
         payment_status,
         amount_received,
+        traveler_name,
+        traveler_email,
+        traveler_phone,
+        booked_by,
         created_at,
         confirmed_at,
         completed_at,
@@ -324,6 +366,10 @@ exports.create = async (req, res) => {
         gross_profit || 0,
         payment_status || 'pending',
         amount_received || 0,
+        traveler_name || null,
+        traveler_email || null,
+        traveler_phone || null,
+        booked_by || 'direct',
         notes || null
       ]
     );
@@ -389,6 +435,10 @@ exports.update = async (req, res) => {
       gross_profit,
       payment_status,
       amount_received,
+      traveler_name,
+      traveler_email,
+      traveler_phone,
+      booked_by,
       notes
     } = req.body;
 
@@ -444,6 +494,17 @@ exports.update = async (req, res) => {
         error: {
           code: 'VALIDATION_ERROR',
           message: 'Payment status must be one of: pending, partial, paid'
+        }
+      });
+    }
+
+    // Validate booked_by if provided
+    if (booked_by && !['agent', 'direct'].includes(booked_by)) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Booked by must be one of: agent, direct'
         }
       });
     }
@@ -539,6 +600,30 @@ exports.update = async (req, res) => {
       paramCount++;
     }
 
+    if (traveler_name !== undefined) {
+      updates.push(`traveler_name = $${paramCount}`);
+      params.push(traveler_name || null);
+      paramCount++;
+    }
+
+    if (traveler_email !== undefined) {
+      updates.push(`traveler_email = $${paramCount}`);
+      params.push(traveler_email || null);
+      paramCount++;
+    }
+
+    if (traveler_phone !== undefined) {
+      updates.push(`traveler_phone = $${paramCount}`);
+      params.push(traveler_phone || null);
+      paramCount++;
+    }
+
+    if (booked_by !== undefined) {
+      updates.push(`booked_by = $${paramCount}`);
+      params.push(booked_by);
+      paramCount++;
+    }
+
     // Handle confirmed_at timestamp
     if (status === 'confirmed' && is_confirmed === true) {
       updates.push(`confirmed_at = NOW()`);
@@ -580,6 +665,10 @@ exports.update = async (req, res) => {
          gross_profit,
          payment_status,
          amount_received,
+         traveler_name,
+         traveler_email,
+         traveler_phone,
+         booked_by,
          created_at,
          confirmed_at,
          completed_at,

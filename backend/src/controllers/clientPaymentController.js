@@ -7,7 +7,7 @@ const { formatDateTime } = require('../utils/formatters');
  */
 exports.getAll = async (req, res) => {
   try {
-    const { booking_id, payment_date_from, payment_date_to, payment_method, currency } = req.query;
+    const { booking_id, payment_date_from, payment_date_to, payment_method, currency, booked_by } = req.query;
 
     // Build dynamic query
     let queryText = `
@@ -22,7 +22,9 @@ exports.getAll = async (req, res) => {
         cp.notes,
         cp.created_at,
         b.booking_code,
-        c.name as client_name
+        b.booked_by,
+        c.name as client_name,
+        b.traveler_name
       FROM client_payments cp
       LEFT JOIN bookings b ON cp.booking_id = b.id
       LEFT JOIN clients c ON b.client_id = c.id
@@ -63,6 +65,13 @@ exports.getAll = async (req, res) => {
     if (currency) {
       queryText += ` AND cp.currency = $${paramCount}`;
       params.push(currency);
+      paramCount++;
+    }
+
+    // Filter by booked_by (agent/direct)
+    if (booked_by && ['agent', 'direct'].includes(booked_by)) {
+      queryText += ` AND b.booked_by = $${paramCount}`;
+      params.push(booked_by);
       paramCount++;
     }
 
