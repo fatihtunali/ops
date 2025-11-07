@@ -157,6 +157,12 @@ CREATE TABLE bookings (
     payment_status VARCHAR(30) DEFAULT 'pending',
     amount_received DECIMAL(12,2) DEFAULT 0,
 
+    -- Traveler information (for agent bookings)
+    traveler_name VARCHAR(255),
+    traveler_email VARCHAR(255),
+    traveler_phone VARCHAR(50),
+    booked_by VARCHAR(20) DEFAULT 'direct', -- 'agent' or 'direct'
+
     -- Metadata
     created_at TIMESTAMP DEFAULT NOW(),
     confirmed_at TIMESTAMP,
@@ -164,7 +170,8 @@ CREATE TABLE bookings (
     notes TEXT,
 
     CONSTRAINT chk_booking_status CHECK (status IN ('inquiry', 'quoted', 'confirmed', 'completed', 'cancelled')),
-    CONSTRAINT chk_payment_status CHECK (payment_status IN ('pending', 'partial', 'paid'))
+    CONSTRAINT chk_payment_status CHECK (payment_status IN ('pending', 'partial', 'paid')),
+    CONSTRAINT chk_booked_by CHECK (booked_by IN ('agent', 'direct'))
 );
 
 -- Indexes for faster queries
@@ -173,6 +180,7 @@ CREATE INDEX idx_bookings_client ON bookings(client_id);
 CREATE INDEX idx_bookings_status ON bookings(status);
 CREATE INDEX idx_bookings_is_confirmed ON bookings(is_confirmed);
 CREATE INDEX idx_bookings_travel_date ON bookings(travel_date_from);
+CREATE INDEX idx_bookings_booked_by ON bookings(booked_by);
 
 -- Passengers (people traveling in a booking)
 CREATE TABLE passengers (
