@@ -3,7 +3,7 @@
 **Version:** 2.0
 **Last Updated:** 2025-11-08
 **Status:** ✅ Production Ready
-**Database:** PostgreSQL 14.19 on YOUR_HOST_IP
+**Database:** PostgreSQL 14.19
 **Next Booking Code:** Funny-1046
 
 ---
@@ -83,7 +83,7 @@
 - **Deployment:** Docker + Nginx + PM2
 
 ### Infrastructure
-- **Database Server:** YOUR_HOST_IP
+- **Database Server:** Your PostgreSQL server
 - **Database Name:** ops
 - **Database User:** ops
 - **Connection:** PostgreSQL 14.19
@@ -1168,7 +1168,7 @@ npm run dev          # Start development server (port 5173)
 
 **Database Backup:**
 ```bash
-pg_dump -U ops -h YOUR_HOST_IP ops > backup_$(date +%Y%m%d).sql
+pg_dump -U ops -h your-host ops > backup_$(date +%Y%m%d).sql
 ```
 
 ### Environment Variables
@@ -1176,7 +1176,7 @@ pg_dump -U ops -h YOUR_HOST_IP ops > backup_$(date +%Y%m%d).sql
 **Backend (.env):**
 ```env
 PORT=5000
-DATABASE_URL=postgresql://ops:PASSWORD_REDACTED@YOUR_HOST_IP:5432/ops
+DATABASE_URL=postgresql://username:password@your-host:5432/database_name
 JWT_SECRET=your_jwt_secret_here
 NODE_ENV=development
 ```
