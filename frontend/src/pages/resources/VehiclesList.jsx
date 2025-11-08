@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import MainLayout from '@components/layout/MainLayout';
 import { Card, Button, Input, Badge, Loader, Modal } from '@components/common';
 import { vehiclesService } from '@services/vehiclesService';
+import vehicleTypesService from '@services/vehicleTypesService';
 import { formatCurrency } from '@utils/formatters';
 import {
   PlusIcon,
@@ -13,6 +14,7 @@ import {
 
 const VehiclesList = () => {
   const [vehicles, setVehicles] = useState([]);
+  const [vehicleTypes, setVehicleTypes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -42,10 +44,29 @@ const VehiclesList = () => {
   const [formErrors, setFormErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
 
+  // Fetch vehicle types on mount
+  useEffect(() => {
+    fetchVehicleTypes();
+  }, []);
+
   // Fetch vehicles
   useEffect(() => {
     fetchVehicles();
   }, [currentPage, statusFilter]);
+
+  const fetchVehicleTypes = async () => {
+    try {
+      const response = await vehicleTypesService.getAll();
+      console.log('Vehicle types full response:', response);
+      // Response is already unwrapped to the array by the API wrapper
+      const types = Array.isArray(response) ? response : (response?.data || []);
+      console.log('Extracted vehicle types:', types);
+      setVehicleTypes(types);
+    } catch (err) {
+      console.error('Failed to fetch vehicle types:', err);
+      console.error('Error details:', err.response?.data);
+    }
+  };
 
   const fetchVehicles = async () => {
     try {
@@ -181,6 +202,15 @@ const VehiclesList = () => {
 
   const handleFormChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+
+    // If vehicle type changes, auto-populate capacity
+    if (field === 'type') {
+      const selectedType = vehicleTypes.find(vt => vt.name === value);
+      if (selectedType) {
+        setFormData((prev) => ({ ...prev, type: value, capacity: selectedType.max_capacity }));
+      }
+    }
+
     // Clear error for this field
     if (formErrors[field]) {
       setFormErrors((prev) => {
@@ -411,12 +441,26 @@ const VehiclesList = () => {
             {/* Type and Capacity */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Vehicle Type</label>
-                <Input
-                  placeholder="e.g., Sedan, Van, Bus"
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Vehicle Type {vehicleTypes.length === 0 && <span className="text-red-500 text-xs">(Loading...)</span>}
+                </label>
+                <select
                   value={formData.type}
                   onChange={(e) => handleFormChange('type', e.target.value)}
-                />
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">Select Vehicle Type</option>
+                  {vehicleTypes && vehicleTypes.length > 0 ? (
+                    vehicleTypes.map((vType) => (
+                      <option key={vType.id} value={vType.name}>
+                        {vType.name} ({vType.max_capacity} pax)
+                      </option>
+                    ))
+                  ) : null}
+                </select>
+                {vehicleTypes.length === 0 && (
+                  <p className="mt-1 text-xs text-gray-500">Loading vehicle types from database...</p>
+                )}
               </div>
               <Input
                 label="Capacity (Passengers)"
@@ -424,6 +468,8 @@ const VehiclesList = () => {
                 value={formData.capacity}
                 onChange={(e) => handleFormChange('capacity', e.target.value)}
                 error={formErrors.capacity}
+                disabled={true}
+                placeholder="Auto-filled from vehicle type"
               />
             </div>
 

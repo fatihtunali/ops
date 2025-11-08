@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const vehicleTypeController = require('../controllers/vehicleTypeController');
-const auth = require('../middleware/auth');
+const { auth } = require('../middleware/auth');
 
 /**
  * Vehicle Types Routes

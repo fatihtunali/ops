@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const vehicleRateController = require('../controllers/vehicleRateController');
-const auth = require('../middleware/auth');
+const { auth } = require('../middleware/auth');
 
 /**
  * Vehicle Rates Routes
