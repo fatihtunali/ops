@@ -11,6 +11,7 @@ import HotelsList from '@pages/hotels/HotelsList';
 import TourSuppliersList from '@pages/tours/TourSuppliersList';
 import GuidesList from '@pages/resources/GuidesList';
 import VehiclesList from '@pages/resources/VehiclesList';
+import VehicleRatesList from '@pages/VehicleRates/VehicleRatesList';
 import ExpensesList from '@pages/expenses/ExpensesList';
 import UsersList from '@pages/users/UsersList';
 import ClientPayments from '@pages/payments/ClientPayments';
@@ -114,6 +115,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <VehiclesList />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/vehicle-rates"
+            element={
+              <ProtectedRoute>
+                <VehicleRatesList />
               </ProtectedRoute>
             }
           />

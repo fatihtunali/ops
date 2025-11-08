@@ -61,7 +61,9 @@ app.get('/api', (req, res) => {
       operationalExpenses: '/api/operational-expenses',
       expenses: '/api/expenses',
       reports: '/api/reports',
-      vouchers: '/api/vouchers'
+      vouchers: '/api/vouchers',
+      vehicleTypes: '/api/vehicle-types',
+      vehicleRates: '/api/vehicle-rates'
     }
   });
 });
@@ -85,6 +87,8 @@ const voucherRoutes = require('./src/routes/vouchers');
 const operationalExpenseRoutes = require('./src/routes/operationalExpenses');
 const userRoutes = require('./src/routes/users');
 const reportRoutes = require('./src/routes/reports');
+const vehicleTypeRoutes = require('./src/routes/vehicleTypes');
+const vehicleRateRoutes = require('./src/routes/vehicleRates');
 
 // Use routes
 app.use('/api/client-payments', clientPaymentRoutes);
@@ -105,6 +109,8 @@ app.use('/api/vouchers', voucherRoutes);
 app.use('/api/operational-expenses', operationalExpenseRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/vehicle-types', vehicleTypeRoutes);
+app.use('/api/vehicle-rates', vehicleRateRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
