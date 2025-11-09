@@ -30,8 +30,10 @@ const TransferForm = ({
     sell_price: 0,
     margin: 0,
 
-    // Optional fields
+    // Optional fields - Flight Details
     flight_number: '',
+    flight_time: '',
+    terminal: '',
     payment_status: 'pending',
     paid_amount: 0,
     payment_due_date: '',
@@ -237,16 +239,38 @@ const TransferForm = ({
           </div>
         </div>
 
-        {/* Flight Number (for airport transfers) */}
+        {/* Flight Details (for airport transfers) */}
         {(formData.transfer_type === 'airport_pickup' || formData.transfer_type === 'airport_dropoff') && (
-          <div>
-            <Input
-              type="text"
-              label="Flight Number (Optional)"
-              value={formData.flight_number}
-              onChange={(e) => handleChange('flight_number', e.target.value)}
-              placeholder="e.g., TK123"
-            />
+          <div className="bg-blue-50 rounded-lg p-4 border border-blue-200 space-y-4">
+            <h5 className="text-sm font-medium text-blue-900">Flight Information</h5>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <Input
+                  type="text"
+                  label="Flight Number"
+                  value={formData.flight_number}
+                  onChange={(e) => handleChange('flight_number', e.target.value)}
+                  placeholder="e.g., TK1234"
+                />
+              </div>
+              <div>
+                <Input
+                  type="time"
+                  label="Flight Time"
+                  value={formData.flight_time}
+                  onChange={(e) => handleChange('flight_time', e.target.value)}
+                />
+              </div>
+              <div>
+                <Input
+                  type="text"
+                  label="Terminal"
+                  value={formData.terminal}
+                  onChange={(e) => handleChange('terminal', e.target.value)}
+                  placeholder="e.g., Terminal 1"
+                />
+              </div>
+            </div>
           </div>
         )}
 

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import MainLayout from '@components/layout/MainLayout';
 import { Card, Button, Input, Loader, CitySelect } from '@components/common';
+import PassengerForm from '@components/forms/PassengerForm';
 import { bookingsService } from '@services/bookingsService';
 import { clientsService } from '@services/clientsService';
 import { hotelsService } from '@services/hotelsService';
@@ -10,6 +11,7 @@ import { guidesService } from '@services/guidesService';
 import { vehiclesService } from '@services/vehiclesService';
 import { entranceFeesService } from '@services/entranceFeesService';
 import { bookingServicesService } from '@services/bookingServicesService';
+import { passengersService } from '@services/passengersService';
 import tourRatesService from '@services/tourRatesService';
 import vehicleRatesService from '@services/vehicleRatesService';
 import { formatDate, formatCurrency } from '@utils/formatters';
@@ -60,6 +62,18 @@ const CreateBooking = () => {
     entranceFees: [],
   });
 
+  // Passenger management
+  const [passengers, setPassengers] = useState([]);
+  const [showPassengerForm, setShowPassengerForm] = useState(false);
+  const [editingPassengerIndex, setEditingPassengerIndex] = useState(null);
+  const [passengerForm, setPassengerForm] = useState({
+    name: '',
+    passport_number: '',
+    nationality: '',
+    date_of_birth: '',
+    special_requests: '',
+  });
+
   // Store existing booking totals (for edit mode)
   const [existingTotals, setExistingTotals] = useState({
     totalSell: 0,
@@ -103,6 +117,7 @@ const CreateBooking = () => {
   const [tourForm, setTourForm] = useState({
     tour_code: '',
     tour_name: '',
+    tour_type: 'private', // 'private' or 'sic'
     tour_date: '',
     duration: '',
     pax_count: 1,
@@ -150,6 +165,9 @@ const CreateBooking = () => {
     confirmation_number: '',
     voucher_issued: false,
     notes: '',
+    flight_number: '',
+    flight_time: '',
+    terminal: '',
   });
 
   // Flight form management
@@ -226,11 +244,18 @@ const CreateBooking = () => {
 
   // Fetch booking data if in edit mode (only once)
   useEffect(() => {
+    console.log('[DEBUG] Edit mode useEffect triggered - isEditMode:', isEditMode, 'bookingDataLoaded:', bookingDataLoaded.current, 'id:', id);
     if (isEditMode && !bookingDataLoaded.current) {
+      console.log('[DEBUG] Fetching booking data...');
       bookingDataLoaded.current = true;
       fetchBookingData();
     }
   }, [id, isEditMode]);
+
+  // Debug: Log services state changes
+  useEffect(() => {
+    console.log('[DEBUG] Services state updated:', services);
+  }, [services]);
 
   const fetchClients = async () => {
     try {
@@ -347,9 +372,12 @@ const CreateBooking = () => {
 
   const fetchBookingData = async () => {
     try {
+      console.log('[DEBUG] fetchBookingData started for booking ID:', id);
       setInitialLoading(true);
       const response = await bookingsService.getById(id);
+      console.log('[DEBUG] Booking API response:', response);
       const booking = response?.data || response;
+      console.log('[DEBUG] Booking data:', booking);
 
       // Format dates for input fields (YYYY-MM-DD)
       // Backend sends dates in DD/MM/YYYY format
@@ -404,41 +432,88 @@ const CreateBooking = () => {
       });
 
       // Fetch all services for this booking
-      const [hotelsRes, toursRes, transfersRes, flightsRes] = await Promise.allSettled([
+      console.log('[DEBUG] Fetching services for booking ID:', id);
+      const [hotelsRes, toursRes, transfersRes, flightsRes, passengersRes] = await Promise.allSettled([
         bookingServicesService.hotels.getByBookingId(id),
         bookingServicesService.tours.getByBookingId(id),
         bookingServicesService.transfers.getByBookingId(id),
         bookingServicesService.flights.getByBookingId(id),
+        passengersService.getByBookingId(id),
       ]);
+
+      // Debug: Log all promise results
+      console.log('[DEBUG] Hotels Response:', hotelsRes);
+      console.log('[DEBUG] Tours Response:', toursRes);
+      console.log('[DEBUG] Transfers Response:', transfersRes);
+      console.log('[DEBUG] Flights Response:', flightsRes);
+      console.log('[DEBUG] Passengers Response:', passengersRes);
 
       // Process hotels
       const fetchedHotels = hotelsRes.status === 'fulfilled'
         ? (hotelsRes.value?.data || hotelsRes.value || [])
         : [];
 
+      if (hotelsRes.status === 'rejected') {
+        console.error('[DEBUG] Hotels fetch failed:', hotelsRes.reason);
+      }
+
       // Process tours
       const fetchedTours = toursRes.status === 'fulfilled'
         ? (toursRes.value?.data || toursRes.value || [])
         : [];
+
+      if (toursRes.status === 'rejected') {
+        console.error('[DEBUG] Tours fetch failed:', toursRes.reason);
+      }
 
       // Process transfers
       const fetchedTransfers = transfersRes.status === 'fulfilled'
         ? (transfersRes.value?.data || transfersRes.value || [])
         : [];
 
+      if (transfersRes.status === 'rejected') {
+        console.error('[DEBUG] Transfers fetch failed:', transfersRes.reason);
+      }
+
       // Process flights
       const fetchedFlights = flightsRes.status === 'fulfilled'
         ? (flightsRes.value?.data || flightsRes.value || [])
         : [];
 
+      if (flightsRes.status === 'rejected') {
+        console.error('[DEBUG] Flights fetch failed:', flightsRes.reason);
+      }
+
+      // Process passengers
+      const fetchedPassengers = passengersRes.status === 'fulfilled'
+        ? (passengersRes.value?.data || passengersRes.value || [])
+        : [];
+
+      if (passengersRes.status === 'rejected') {
+        console.error('[DEBUG] Passengers fetch failed:', passengersRes.reason);
+      }
+
+      // Debug: Log processed data
+      console.log('[DEBUG] Processed Hotels:', fetchedHotels);
+      console.log('[DEBUG] Processed Tours:', fetchedTours);
+      console.log('[DEBUG] Processed Transfers:', fetchedTransfers);
+      console.log('[DEBUG] Processed Flights:', fetchedFlights);
+      console.log('[DEBUG] Processed Passengers:', fetchedPassengers);
+
       // Populate services state with fetched data
-      setServices({
+      const servicesData = {
         hotels: fetchedHotels,
         tours: fetchedTours,
         transfers: fetchedTransfers,
         flights: fetchedFlights,
         entranceFees: [], // Entrance fees will be added if backend supports it
-      });
+      };
+
+      console.log('[DEBUG] Setting services state to:', servicesData);
+      setServices(servicesData);
+
+      // Set passengers
+      setPassengers(fetchedPassengers);
 
     } catch (error) {
       console.error('Failed to fetch booking:', error);
@@ -549,12 +624,12 @@ const CreateBooking = () => {
 
     services.tours.forEach((tour) => {
       totalSell += parseFloat(tour.sell_price) || 0;
-      totalCost += parseFloat(tour.supplier_cost || tour.self_operated_cost || 0);
+      totalCost += parseFloat(tour.total_cost) || 0;
     });
 
     services.transfers.forEach((transfer) => {
       totalSell += parseFloat(transfer.sell_price) || 0;
-      totalCost += parseFloat(transfer.supplier_cost || transfer.self_operated_cost || 0);
+      totalCost += parseFloat(transfer.cost_price) || 0;
     });
 
     services.flights.forEach((flight) => {
@@ -574,32 +649,239 @@ const CreateBooking = () => {
     };
   };
 
+  // Helper function to clean service data before sending to API
+  const cleanServiceData = (data) => {
+    const cleaned = { ...data };
+
+    // Convert empty strings to null for ID fields (integers that can be NULL)
+    const idFields = ['supplier_id', 'hotel_id', 'guide_id', 'vehicle_id', 'entrance_fee_id', 'vehicle_type_id'];
+    idFields.forEach(field => {
+      if (cleaned[field] === '' || cleaned[field] === undefined || cleaned[field] === null) {
+        cleaned[field] = null;
+      } else if (typeof cleaned[field] === 'string') {
+        // Ensure it's a number if not null
+        const parsed = parseInt(cleaned[field], 10);
+        cleaned[field] = isNaN(parsed) ? null : parsed;
+      }
+    });
+
+    // Convert empty strings to null for date fields (PostgreSQL needs NULL, not empty string)
+    const dateFields = ['tour_date', 'transfer_date', 'check_in', 'check_out', 'check_in_date', 'check_out_date',
+                        'payment_due_date', 'departure_date', 'arrival_date'];
+    dateFields.forEach(field => {
+      if (cleaned[field] === '' || cleaned[field] === undefined || cleaned[field] === null) {
+        cleaned[field] = null;
+      }
+    });
+
+    // Convert empty strings to 0 for numeric fields (numbers that cannot be NULL)
+    const numericFields = ['supplier_cost', 'guide_cost', 'vehicle_cost', 'entrance_fees', 'other_costs',
+                          'sell_price', 'paid_amount', 'cost_price', 'cost_per_night',
+                          'total_cost', 'margin'];
+    numericFields.forEach(field => {
+      if (cleaned[field] === '' || cleaned[field] === undefined || cleaned[field] === null) {
+        cleaned[field] = 0;
+      } else if (typeof cleaned[field] === 'string') {
+        const parsed = parseFloat(cleaned[field]);
+        cleaned[field] = isNaN(parsed) ? 0 : parsed;
+      }
+    });
+
+    // Integer fields that cannot be NULL (must be > 0)
+    const integerFields = ['pax_count', 'nights', 'number_of_rooms'];
+    integerFields.forEach(field => {
+      if (cleaned[field] === '' || cleaned[field] === undefined || cleaned[field] === null) {
+        cleaned[field] = field === 'pax_count' ? 1 : 0;  // Default pax_count to 1
+      } else if (typeof cleaned[field] === 'string') {
+        const parsed = parseInt(cleaned[field], 10);
+        cleaned[field] = isNaN(parsed) ? (field === 'pax_count' ? 1 : 0) : parsed;
+      }
+    });
+
+    // Convert empty strings to null for text fields
+    const textFields = ['confirmation_number', 'notes', 'room_type', 'hotel_name', 'from_location', 'to_location', 'vehicle_type', 'duration', 'transfer_type'];
+    textFields.forEach(field => {
+      if (cleaned[field] === '' || cleaned[field] === undefined) {
+        cleaned[field] = null;
+      }
+    });
+
+    // Boolean fields - ensure proper boolean type
+    const booleanFields = ['voucher_issued'];
+    booleanFields.forEach(field => {
+      if (cleaned[field] === '' || cleaned[field] === undefined || cleaned[field] === null) {
+        cleaned[field] = false;
+      } else {
+        cleaned[field] = Boolean(cleaned[field]);
+      }
+    });
+
+    // Remove frontend-only fields that backend doesn't use
+    delete cleaned.tour_type;  // Frontend uses this, but backend doesn't
+    delete cleaned.cost_per_person;  // Calculated from rates, not stored
+    delete cleaned.tour_code;  // Not used by backend
+    delete cleaned.city;  // Frontend helper field for transfers
+
+    // Ensure required fields for tours have default values
+    if ('tour_name' in data && !cleaned.tour_name) {
+      cleaned.tour_name = 'Unnamed Tour';  // Backend requires tour_name
+    }
+    if ('operation_type' in data && !cleaned.operation_type) {
+      cleaned.operation_type = 'supplier';  // Backend requires operation_type
+    }
+
+    // Ensure payment_status has a default
+    if ('payment_status' in data && !cleaned.payment_status) {
+      cleaned.payment_status = 'pending';
+    }
+
+    return cleaned;
+  };
+
   const handleSubmit = async () => {
+    console.log('[DEBUG] handleSubmit called');
+    console.log('[DEBUG] passengers state at submit:', passengers);
+    console.log('[DEBUG] passengers.length:', passengers.length);
+
     try {
       setLoading(true);
 
       const totals = calculateTotals();
 
-      const payload = {
+      // Step 1: Save/update the booking
+      const bookingPayload = {
         ...bookingData,
         total_sell_price: totals.totalSell,
         total_cost_price: totals.totalCost,
         gross_profit: totals.grossProfit,
         is_confirmed: bookingData.status === BOOKING_STATUS.CONFIRMED,
-        services,
       };
 
       let response;
+      let bookingId;
+
       if (isEditMode) {
-        response = await bookingsService.update(id, payload);
+        response = await bookingsService.update(id, bookingPayload);
+        bookingId = id;
       } else {
-        response = await bookingsService.create(payload);
+        response = await bookingsService.create(bookingPayload);
+        const data = response?.data || response;
+        bookingId = data.id || data.booking_id;
       }
 
-      const data = response?.data || response;
+      // Step 2: Save each service individually
+      console.log('[DEBUG] Starting to save services and passengers');
+      console.log('[DEBUG] Services to save:', {
+        hotels: services.hotels.length,
+        tours: services.tours.length,
+        transfers: services.transfers.length,
+        flights: services.flights.length,
+        entranceFees: services.entranceFees.length
+      });
+      console.log('[DEBUG] Passengers to save:', passengers.length);
+
+      // Step 2a: Save services (in try-catch to allow passengers to save even if services fail)
+      try {
+        // Save hotels
+        for (const hotel of services.hotels) {
+          const cleanedHotel = cleanServiceData({ ...hotel, booking_id: bookingId });
+          if (hotel.id) {
+            await bookingServicesService.hotels.update(hotel.id, cleanedHotel);
+          } else {
+            await bookingServicesService.hotels.create(cleanedHotel);
+          }
+        }
+
+        // Save tours
+        for (const tour of services.tours) {
+          const cleanedTour = cleanServiceData({ ...tour, booking_id: bookingId });
+          if (tour.id) {
+            await bookingServicesService.tours.update(tour.id, cleanedTour);
+          } else {
+            await bookingServicesService.tours.create(cleanedTour);
+          }
+        }
+
+        // Save transfers
+        for (const transfer of services.transfers) {
+          const cleanedTransfer = cleanServiceData({ ...transfer, booking_id: bookingId });
+          if (transfer.id) {
+            await bookingServicesService.transfers.update(transfer.id, cleanedTransfer);
+          } else {
+            await bookingServicesService.transfers.create(cleanedTransfer);
+          }
+        }
+
+        // Save flights
+        for (const flight of services.flights) {
+          const cleanedFlight = cleanServiceData({ ...flight, booking_id: bookingId });
+          if (flight.id) {
+            await bookingServicesService.flights.update(flight.id, cleanedFlight);
+          } else {
+            await bookingServicesService.flights.create(cleanedFlight);
+          }
+        }
+
+        // Save entrance fees
+        for (const entranceFee of services.entranceFees) {
+          const cleanedEntranceFee = cleanServiceData({ ...entranceFee, booking_id: bookingId });
+          if (entranceFee.id) {
+            await bookingServicesService.entranceFees.update(entranceFee.id, cleanedEntranceFee);
+          } else {
+            await bookingServicesService.entranceFees.create(cleanedEntranceFee);
+          }
+        }
+      } catch (serviceError) {
+        console.error('[DEBUG] Error saving services:', serviceError);
+        console.error('[DEBUG] Error details:', {
+          message: serviceError.message,
+          stack: serviceError.stack,
+          response: serviceError.response
+        });
+        alert('Booking created but some services failed to save. Please edit the booking to add them again.');
+        // Don't throw - continue to save passengers
+      }
+
+      // Step 2b: Save passengers (in separate try-catch so they save even if services fail)
+      try {
+        console.log('[DEBUG] Saving passengers, count:', passengers.length, 'passengers:', passengers);
+        for (const passenger of passengers) {
+          console.log('[DEBUG] Processing passenger:', passenger);
+          const cleanedPassenger = { ...passenger, booking_id: bookingId };
+
+          // Convert date from YYYY-MM-DD to DD/MM/YYYY format for backend
+          if (cleanedPassenger.date_of_birth && cleanedPassenger.date_of_birth.includes('-')) {
+            const [year, month, day] = cleanedPassenger.date_of_birth.split('-');
+            cleanedPassenger.date_of_birth = `${day}/${month}/${year}`;
+          }
+
+          // Remove frontend-only fields
+          delete cleanedPassenger.passenger_type;
+          delete cleanedPassenger.passport_expiry;
+
+          console.log('[DEBUG] Cleaned passenger data:', cleanedPassenger);
+          if (passenger.id) {
+            console.log('[DEBUG] Updating passenger with ID:', passenger.id);
+            await passengersService.update(passenger.id, cleanedPassenger);
+          } else {
+            console.log('[DEBUG] Creating new passenger');
+            await passengersService.create(cleanedPassenger);
+          }
+          console.log('[DEBUG] Passenger saved successfully');
+        }
+        console.log('[DEBUG] All passengers saved');
+      } catch (passengerError) {
+        console.error('[DEBUG] Error saving passengers:', passengerError);
+        console.error('[DEBUG] Error details:', {
+          message: passengerError.message,
+          stack: passengerError.stack,
+          response: passengerError.response
+        });
+        alert('Booking created but passengers failed to save. Please edit the booking to add them again.');
+      }
 
       // Navigate to the booking
-      navigate(`/bookings/${id || data.id || data.booking_id}`);
+      navigate(`/bookings/${bookingId}`);
     } catch (error) {
       console.error(`Failed to ${isEditMode ? 'update' : 'create'} booking:`, error);
       alert(`Failed to ${isEditMode ? 'update' : 'create'} booking. Please try again.`);
@@ -615,7 +897,32 @@ const CreateBooking = () => {
     }));
   };
 
-  const removeService = (type, index) => {
+  const removeService = async (type, index) => {
+    const service = services[type][index];
+
+    // If service has an ID, it's saved in database - need to delete it via API
+    if (service && service.id) {
+      try {
+        // Call the appropriate delete API based on service type
+        if (type === 'hotels') {
+          await bookingServicesService.hotels.delete(service.id);
+        } else if (type === 'tours') {
+          await bookingServicesService.tours.delete(service.id);
+        } else if (type === 'transfers') {
+          await bookingServicesService.transfers.delete(service.id);
+        } else if (type === 'flights') {
+          await bookingServicesService.flights.delete(service.id);
+        } else if (type === 'entranceFees') {
+          await bookingServicesService.entranceFees.delete(service.id);
+        }
+      } catch (error) {
+        console.error(`Failed to delete ${type}:`, error);
+        alert(`Failed to delete ${type}. Please try again.`);
+        return; // Don't remove from UI if API call failed
+      }
+    }
+
+    // Remove from local state
     setServices((prev) => ({
       ...prev,
       [type]: prev[type].filter((_, i) => i !== index),
@@ -720,36 +1027,47 @@ const CreateBooking = () => {
         }
       }
 
-      // Auto-calculate total cost when relevant fields change
-      if (
-        field === 'cost_per_night' ||
-        field === 'nights' ||
-        field === 'number_of_rooms'
-      ) {
-        const costPerNight = parseFloat(updated.cost_per_night) || 0;
-        const nights = parseInt(updated.nights) || 0;
-        const rooms = parseInt(updated.number_of_rooms) || 1;
-        updated.total_cost = costPerNight * nights * rooms;
+      // Auto-calculate total cost and sell price
+      // This needs to happen whenever cost_per_night, nights, or number_of_rooms change
+      const costPerNight = parseFloat(updated.cost_per_night) || 0;
+      const nights = parseInt(updated.nights) || 0;
+      const rooms = parseInt(updated.number_of_rooms) || 1;
+
+      // Calculate total cost
+      updated.total_cost = costPerNight * nights * rooms;
+
+      // Auto-calculate sell price with 100 EUR markup per room per night (unless manually set)
+      if (field !== 'sell_price') {
+        const markup = 100; // EUR per room per night
+        updated.sell_price = updated.total_cost + (markup * nights * rooms);
       }
 
-      // Auto-calculate margin when costs change
-      if (field === 'sell_price' || field === 'total_cost') {
-        const sellPrice = parseFloat(updated.sell_price) || 0;
-        const totalCost = parseFloat(updated.total_cost) || 0;
-        updated.margin = sellPrice - totalCost;
-      }
+      // Auto-calculate margin
+      const sellPrice = parseFloat(updated.sell_price) || 0;
+      const totalCost = parseFloat(updated.total_cost) || 0;
+      updated.margin = sellPrice - totalCost;
 
       return updated;
     });
   };
 
   const resetHotelForm = () => {
+    // Calculate nights from booking dates
+    let calculatedNights = 0;
+    if (bookingData.travel_date_from && bookingData.travel_date_to) {
+      const checkIn = new Date(bookingData.travel_date_from);
+      const checkOut = new Date(bookingData.travel_date_to);
+      const diffTime = checkOut - checkIn;
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      calculatedNights = diffDays > 0 ? diffDays : 0;
+    }
+
     setHotelForm({
       hotel_id: '',
       hotel_name: '',
-      check_in: '',
-      check_out: '',
-      nights: 0,
+      check_in: bookingData.travel_date_from || '',
+      check_out: bookingData.travel_date_to || '',
+      nights: calculatedNights,
       room_type: '',
       number_of_rooms: 1,
       cost_per_night: 0,
@@ -809,6 +1127,54 @@ const CreateBooking = () => {
     }
   };
 
+  // Helper function to get transfer rate based on transfer type
+  const getTransferRate = (vehicleRate, transferType) => {
+    if (!vehicleRate) return 0;
+
+    switch (transferType) {
+      case 'airport':
+        return parseFloat(vehicleRate.airport_to_hotel) || parseFloat(vehicleRate.round_trip) || 0;
+      case 'intercity':
+        return parseFloat(vehicleRate.full_day_price) || 0;
+      case 'hourly':
+        return parseFloat(vehicleRate.half_day_price) || 0;
+      case 'full-day':
+        return parseFloat(vehicleRate.full_day_price) || 0;
+      case 'half-day':
+        return parseFloat(vehicleRate.half_day_price) || 0;
+      default:
+        return parseFloat(vehicleRate.airport_to_hotel) || 0;
+    }
+  };
+
+  // Helper function to get tour rate based on tour type and PAX count
+  const getTourRateByPax = (tourRate, paxCount, tourType = 'private') => {
+    if (!tourRate) return 0;
+
+    // If SIC tour, return SIC rate per person
+    if (tourType === 'sic') {
+      return parseFloat(tourRate.sic_rate) || 0;
+    }
+
+    // For private tours, determine rate based on PAX count
+    const pax = parseInt(paxCount) || 1;
+
+    if (pax === 1) {
+      // For 1 pax, use private_2pax_rate (most common for single travelers)
+      return parseFloat(tourRate.private_2pax_rate) || parseFloat(tourRate.sic_rate) || 0;
+    } else if (pax === 2) {
+      return parseFloat(tourRate.private_2pax_rate) || 0;
+    } else if (pax <= 4) {
+      return parseFloat(tourRate.private_4pax_rate) || parseFloat(tourRate.private_2pax_rate) || 0;
+    } else if (pax <= 6) {
+      return parseFloat(tourRate.private_6pax_rate) || parseFloat(tourRate.private_4pax_rate) || 0;
+    } else if (pax <= 8) {
+      return parseFloat(tourRate.private_8pax_rate) || parseFloat(tourRate.private_6pax_rate) || 0;
+    } else {
+      return parseFloat(tourRate.private_10pax_rate) || parseFloat(tourRate.private_8pax_rate) || 0;
+    }
+  };
+
   // Tour form handlers
   const handleTourFormChange = (field, value) => {
     setTourForm((prev) => {
@@ -820,10 +1186,12 @@ const CreateBooking = () => {
         if (selectedTour) {
           updated.tour_name = selectedTour.tour_name || '';
           updated.duration = selectedTour.duration || '';
-          updated.cost_per_person = parseFloat(selectedTour.cost_per_person) || 0;
+
+          // Get the appropriate rate based on tour type and PAX count
+          const paxCount = parseInt(updated.pax_count) || 1;
+          updated.cost_per_person = getTourRateByPax(selectedTour, paxCount, updated.tour_type);
 
           // Calculate total cost based on pax count
-          const paxCount = parseInt(updated.pax_count) || 1;
           updated.supplier_cost = updated.cost_per_person * paxCount;
           updated.total_cost = updated.supplier_cost;
         }
@@ -833,18 +1201,40 @@ const CreateBooking = () => {
       if (field === 'supplier_id' && value && updated.tour_code) {
         const selectedTour = availableTourRates.find((t) => t.tour_code === updated.tour_code && t.supplier_id === parseInt(value));
         if (selectedTour) {
-          updated.cost_per_person = parseFloat(selectedTour.cost_per_person) || 0;
           const paxCount = parseInt(updated.pax_count) || 1;
+          updated.cost_per_person = getTourRateByPax(selectedTour, paxCount, updated.tour_type);
           updated.supplier_cost = updated.cost_per_person * paxCount;
           updated.total_cost = updated.supplier_cost;
         }
       }
 
       // Auto-calculate total cost when pax count changes
-      if (field === 'pax_count' && updated.operation_type === 'supplier' && updated.cost_per_person) {
+      if (field === 'pax_count' && updated.operation_type === 'supplier') {
         const paxCount = parseInt(value) || 1;
+
+        // Recalculate cost_per_person based on new PAX count (for private tours)
+        if (updated.tour_code && updated.supplier_id) {
+          const selectedTour = availableTourRates.find((t) => t.tour_code === updated.tour_code && t.supplier_id === parseInt(updated.supplier_id));
+          if (selectedTour) {
+            updated.cost_per_person = getTourRateByPax(selectedTour, paxCount, updated.tour_type);
+          }
+        }
+
         updated.supplier_cost = updated.cost_per_person * paxCount;
         updated.total_cost = updated.supplier_cost;
+      }
+
+      // Auto-recalculate costs when tour type changes (SIC vs Private)
+      if (field === 'tour_type' && updated.operation_type === 'supplier') {
+        if (updated.tour_code && updated.supplier_id) {
+          const selectedTour = availableTourRates.find((t) => t.tour_code === updated.tour_code && t.supplier_id === parseInt(updated.supplier_id));
+          if (selectedTour) {
+            const paxCount = parseInt(updated.pax_count) || 1;
+            updated.cost_per_person = getTourRateByPax(selectedTour, paxCount, value);
+            updated.supplier_cost = updated.cost_per_person * paxCount;
+            updated.total_cost = updated.supplier_cost;
+          }
+        }
       }
 
       // Auto-calculate total cost for self-operated tours
@@ -877,12 +1267,17 @@ const CreateBooking = () => {
         }
       }
 
-      // Auto-calculate margin
-      if (field === 'sell_price' || field === 'total_cost' || field === 'guide_cost' || field === 'vehicle_cost' || field === 'entrance_fees' || field === 'other_costs' || field === 'supplier_cost') {
-        const sellPrice = parseFloat(updated.sell_price) || 0;
+      // Auto-calculate sell price with 30% markup (unless manually set)
+      if (field !== 'sell_price') {
         const totalCost = parseFloat(updated.total_cost) || 0;
-        updated.margin = sellPrice - totalCost;
+        const markup = 0.30; // 30% markup
+        updated.sell_price = totalCost * (1 + markup);
       }
+
+      // Auto-calculate margin
+      const sellPrice = parseFloat(updated.sell_price) || 0;
+      const totalCost = parseFloat(updated.total_cost) || 0;
+      updated.margin = sellPrice - totalCost;
 
       return updated;
     });
@@ -892,9 +1287,10 @@ const CreateBooking = () => {
     setTourForm({
       tour_code: '',
       tour_name: '',
-      tour_date: '',
+      tour_type: 'private',
+      tour_date: bookingData.travel_date_from || '',
       duration: '',
-      pax_count: 1,
+      pax_count: bookingData.pax_count || 1,
       operation_type: 'supplier',
       supplier_id: '',
       supplier_cost: 0,
@@ -964,29 +1360,14 @@ const CreateBooking = () => {
       const updated = { ...prev, [field]: value };
 
       // Auto-populate vehicle details when vehicle_type_id changes
-      if (field === 'vehicle_type_id' && value && updated.city && updated.transfer_type) {
+      if (field === 'vehicle_type_id' && value && updated.city) {
         const selectedRate = availableVehicleRates.find(
           (rate) => rate.id === parseInt(value) && rate.city === updated.city
         );
         if (selectedRate) {
           updated.vehicle_type = selectedRate.vehicle_type || '';
-
           // Auto-populate cost based on transfer type
-          let cost = 0;
-          switch (updated.transfer_type) {
-            case 'airport':
-              cost = parseFloat(selectedRate.airport_transfer_rate) || 0;
-              break;
-            case 'intercity':
-              cost = parseFloat(selectedRate.intercity_rate) || 0;
-              break;
-            case 'hourly':
-              cost = parseFloat(selectedRate.hourly_rate) || 0;
-              break;
-            default:
-              cost = parseFloat(selectedRate.airport_transfer_rate) || 0;
-          }
-          updated.cost_price = cost;
+          updated.cost_price = getTransferRate(selectedRate, updated.transfer_type);
         }
       }
 
@@ -996,21 +1377,7 @@ const CreateBooking = () => {
           (rate) => rate.id === parseInt(updated.vehicle_type_id) && rate.city === value
         );
         if (selectedRate) {
-          let cost = 0;
-          switch (updated.transfer_type) {
-            case 'airport':
-              cost = parseFloat(selectedRate.airport_transfer_rate) || 0;
-              break;
-            case 'intercity':
-              cost = parseFloat(selectedRate.intercity_rate) || 0;
-              break;
-            case 'hourly':
-              cost = parseFloat(selectedRate.hourly_rate) || 0;
-              break;
-            default:
-              cost = parseFloat(selectedRate.airport_transfer_rate) || 0;
-          }
-          updated.cost_price = cost;
+          updated.cost_price = getTransferRate(selectedRate, updated.transfer_type);
         }
       }
 
@@ -1020,30 +1387,21 @@ const CreateBooking = () => {
           (rate) => rate.id === parseInt(updated.vehicle_type_id) && rate.city === updated.city
         );
         if (selectedRate) {
-          let cost = 0;
-          switch (value) {
-            case 'airport':
-              cost = parseFloat(selectedRate.airport_transfer_rate) || 0;
-              break;
-            case 'intercity':
-              cost = parseFloat(selectedRate.intercity_rate) || 0;
-              break;
-            case 'hourly':
-              cost = parseFloat(selectedRate.hourly_rate) || 0;
-              break;
-            default:
-              cost = parseFloat(selectedRate.airport_transfer_rate) || 0;
-          }
-          updated.cost_price = cost;
+          updated.cost_price = getTransferRate(selectedRate, value);
         }
       }
 
-      // Auto-calculate margin
-      if (field === 'sell_price' || field === 'cost_price') {
-        const sellPrice = parseFloat(updated.sell_price) || 0;
+      // Auto-calculate sell price with 30% markup (unless manually set)
+      if (field !== 'sell_price') {
         const costPrice = parseFloat(updated.cost_price) || 0;
-        updated.margin = sellPrice - costPrice;
+        const markup = 0.30; // 30% markup
+        updated.sell_price = costPrice * (1 + markup);
       }
+
+      // Auto-calculate margin
+      const sellPrice = parseFloat(updated.sell_price) || 0;
+      const costPrice = parseFloat(updated.cost_price) || 0;
+      updated.margin = sellPrice - costPrice;
 
       return updated;
     });
@@ -1055,10 +1413,10 @@ const CreateBooking = () => {
       city: '',
       vehicle_type_id: '',
       vehicle_type: '',
-      transfer_date: '',
+      transfer_date: bookingData.travel_date_from || '',
       from_location: '',
       to_location: '',
-      pax_count: 1,
+      pax_count: bookingData.pax_count || 1,
       operation_type: 'supplier',
       supplier_id: '',
       vehicle_id: '',
@@ -1293,6 +1651,79 @@ const CreateBooking = () => {
     }
   };
 
+  // Passenger form handlers
+  const resetPassengerForm = () => {
+    setPassengerForm({
+      name: '',
+      passport_number: '',
+      nationality: '',
+      date_of_birth: '',
+      special_requests: '',
+    });
+    setEditingPassengerIndex(null);
+  };
+
+  const handleAddPassenger = () => {
+    setShowPassengerForm(true);
+    resetPassengerForm();
+  };
+
+  const handleEditPassenger = (index) => {
+    setEditingPassengerIndex(index);
+    setPassengerForm(passengers[index]);
+    setShowPassengerForm(true);
+  };
+
+  const handleSavePassenger = (passengerData) => {
+    console.log('[DEBUG] handleSavePassenger called with:', passengerData);
+    console.log('[DEBUG] Current passengers state:', passengers);
+    console.log('[DEBUG] editingPassengerIndex:', editingPassengerIndex);
+
+    if (editingPassengerIndex !== null) {
+      const updatedPassengers = [...passengers];
+      updatedPassengers[editingPassengerIndex] = passengerData;
+      console.log('[DEBUG] Updating passenger at index', editingPassengerIndex, 'new array:', updatedPassengers);
+      setPassengers(updatedPassengers);
+    } else {
+      console.log('[DEBUG] Adding new passenger to array');
+      setPassengers((prev) => {
+        const newPassengers = [...prev, passengerData];
+        console.log('[DEBUG] New passengers array:', newPassengers);
+        return newPassengers;
+      });
+    }
+
+    setShowPassengerForm(false);
+    resetPassengerForm();
+  };
+
+  const handleCancelPassenger = () => {
+    setShowPassengerForm(false);
+    resetPassengerForm();
+  };
+
+  const handleRemovePassenger = async (index) => {
+    if (!confirm('Are you sure you want to delete this passenger?')) {
+      return;
+    }
+
+    const passenger = passengers[index];
+
+    // If passenger has an ID, it's saved in database - need to delete it via API
+    if (passenger && passenger.id) {
+      try {
+        await passengersService.delete(passenger.id);
+      } catch (error) {
+        console.error('Failed to delete passenger:', error);
+        alert('Failed to delete passenger. Please try again.');
+        return; // Don't remove from UI if API call failed
+      }
+    }
+
+    // Remove from local state
+    setPassengers((prev) => prev.filter((_, i) => i !== index));
+  };
+
   const steps = [
     { number: 1, name: 'Basic Information' },
     { number: 2, name: 'Add Services' },
@@ -1402,7 +1833,7 @@ const CreateBooking = () => {
                   <option value="">Select a client...</option>
                   {clients.map((client) => (
                     <option key={client.id} value={client.id}>
-                      {client.name} {client.client_type === 'agent' ? '(Agent)' : '(Direct)'}
+                      {client.name} {client.type === 'agent' ? '(Agent)' : '(Direct)'}
                     </option>
                   ))}
                 </select>
@@ -1602,7 +2033,7 @@ const CreateBooking = () => {
                             <option value="">Select a hotel...</option>
                             {availableHotels.map((hotel) => (
                               <option key={hotel.id} value={hotel.id}>
-                                {hotel.name} - {hotel.location}
+                                {hotel.name} - {hotel.city}
                               </option>
                             ))}
                           </select>
@@ -1635,6 +2066,10 @@ const CreateBooking = () => {
                             label="Check-in Date *"
                             value={hotelForm.check_in}
                             onChange={(e) => handleHotelFormChange('check_in', e.target.value)}
+                            readOnly
+                            disabled
+                            className="bg-gray-100"
+                            title="Check-in date is set from booking travel dates"
                           />
                         </div>
                         <div>
@@ -1643,6 +2078,10 @@ const CreateBooking = () => {
                             label="Check-out Date *"
                             value={hotelForm.check_out}
                             onChange={(e) => handleHotelFormChange('check_out', e.target.value)}
+                            readOnly
+                            disabled
+                            className="bg-gray-100"
+                            title="Check-out date is set from booking travel dates"
                           />
                         </div>
                         <div>
@@ -1916,6 +2355,22 @@ const CreateBooking = () => {
                       {tourForm.operation_type === 'supplier' && (
                         <div className="bg-white rounded-lg p-3 border border-green-300 space-y-4">
                           <h5 className="text-sm font-medium text-slate-700">Select Tour</h5>
+
+                          {/* Tour Type Selection */}
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-2">
+                              Tour Type <span className="text-red-500">*</span>
+                            </label>
+                            <select
+                              value={tourForm.tour_type}
+                              onChange={(e) => handleTourFormChange('tour_type', e.target.value)}
+                              className="w-full md:w-1/2 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                            >
+                              <option value="private">Private Tour</option>
+                              <option value="sic">SIC (Seat-in-Coach)</option>
+                            </select>
+                          </div>
+
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                               <label className="block text-sm font-medium text-slate-700 mb-2">
@@ -2458,6 +2913,41 @@ const CreateBooking = () => {
                           </select>
                         </div>
                       </div>
+
+                      {/* Flight Details (for airport transfers) */}
+                      {transferForm.transfer_type === 'airport' && (
+                        <div className="bg-blue-50 rounded-lg p-4 border border-blue-200 space-y-3">
+                          <h5 className="text-sm font-semibold text-blue-900">Flight Information</h5>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                              <Input
+                                type="text"
+                                label="Flight Number"
+                                value={transferForm.flight_number || ''}
+                                onChange={(e) => handleTransferFormChange('flight_number', e.target.value)}
+                                placeholder="e.g., TK1234"
+                              />
+                            </div>
+                            <div>
+                              <Input
+                                type="time"
+                                label="Flight Time"
+                                value={transferForm.flight_time || ''}
+                                onChange={(e) => handleTransferFormChange('flight_time', e.target.value)}
+                              />
+                            </div>
+                            <div>
+                              <Input
+                                type="text"
+                                label="Terminal"
+                                value={transferForm.terminal || ''}
+                                onChange={(e) => handleTransferFormChange('terminal', e.target.value)}
+                                placeholder="e.g., Terminal 1"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
 
                       {/* Conditional Fields */}
                       {transferForm.operation_type === 'supplier' && (
@@ -3255,6 +3745,104 @@ const CreateBooking = () => {
                   )}
                 </div>
               )}
+
+              {/* Passengers Section */}
+              <div className="mt-8 pt-8 border-t border-blue-200">
+                <div className="flex justify-between items-center mb-4">
+                  <div>
+                    <h3 className="text-lg font-medium text-slate-900">Passengers</h3>
+                    <p className="text-sm text-slate-600 mt-1">
+                      {passengers.length} passenger{passengers.length !== 1 ? 's' : ''} added
+                    </p>
+                  </div>
+                  <Button icon={PlusIcon} onClick={handleAddPassenger}>
+                    Add Passenger
+                  </Button>
+                </div>
+
+                {/* Passenger Form */}
+                {showPassengerForm && (
+                  <div className="mb-4">
+                    <PassengerForm
+                      initialData={editingPassengerIndex !== null ? passengerForm : null}
+                      onSave={handleSavePassenger}
+                      onCancel={handleCancelPassenger}
+                    />
+                  </div>
+                )}
+
+                {/* Passengers List */}
+                {passengers.length > 0 ? (
+                  <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+                    <table className="min-w-full divide-y divide-slate-200">
+                      <thead className="bg-slate-50">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                            Name
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                            Passport Number
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                            Nationality
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                            Date of Birth
+                          </th>
+                          <th className="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
+                            Actions
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-slate-200">
+                        {passengers.map((passenger, index) => (
+                          <tr key={index} className="hover:bg-slate-50">
+                            <td className="px-4 py-3 text-sm text-slate-900">
+                              {passenger.name || '-'}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-slate-900">
+                              {passenger.passport_number || '-'}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-slate-900">
+                              {passenger.nationality || '-'}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-slate-900">
+                              {passenger.date_of_birth ? formatDate(passenger.date_of_birth) : '-'}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-right">
+                              <div className="flex gap-2 justify-end">
+                                <button
+                                  onClick={() => handleEditPassenger(index)}
+                                  className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                  title="Edit Passenger"
+                                >
+                                  <PencilIcon className="h-4 w-4" />
+                                </button>
+                                <button
+                                  onClick={() => handleRemovePassenger(index)}
+                                  className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                  title="Delete Passenger"
+                                >
+                                  <TrashIcon className="h-4 w-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  !showPassengerForm && (
+                    <div className="text-center py-8 bg-slate-50 rounded-lg border border-slate-200">
+                      <p className="text-slate-600 mb-4">No passengers added yet</p>
+                      <Button icon={PlusIcon} onClick={handleAddPassenger}>
+                        Add Your First Passenger
+                      </Button>
+                    </div>
+                  )
+                )}
+              </div>
             </div>
           )}
 

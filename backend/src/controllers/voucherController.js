@@ -1,5 +1,7 @@
 const { query } = require('../config/database');
 const { formatDateTime } = require('../utils/formatters');
+const voucherService = require('../services/voucherService');
+const path = require('path');
 
 /**
  * Generate unique voucher number
@@ -510,6 +512,284 @@ exports.deleteVoucher = async (req, res) => {
       error: {
         code: 'INTERNAL_ERROR',
         message: 'Failed to delete voucher'
+      }
+    });
+  }
+};
+
+/**
+ * Get booking services for voucher generation
+ * GET /api/vouchers/booking/:bookingId/services
+ */
+exports.getBookingServices = async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+
+    const data = await voucherService.getBookingServices(bookingId);
+
+    res.json({
+      success: true,
+      data
+    });
+  } catch (error) {
+    console.error('Get booking services error:', error);
+
+    if (error.message === 'Booking not found') {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: 'NOT_FOUND',
+          message: 'Booking not found'
+        }
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'Failed to fetch booking services'
+      }
+    });
+  }
+};
+
+/**
+ * Generate hotel voucher PDF
+ * POST /api/vouchers/generate/hotel
+ */
+exports.generateHotelVoucher = async (req, res) => {
+  try {
+    const { booking_id, hotel_id } = req.body;
+
+    if (!booking_id || !hotel_id) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Booking ID and Hotel ID are required'
+        }
+      });
+    }
+
+    const result = await voucherService.generateHotelVoucher(
+      parseInt(booking_id),
+      parseInt(hotel_id)
+    );
+
+    res.json({
+      success: true,
+      message: 'Hotel voucher generated successfully',
+      data: result.voucher
+    });
+  } catch (error) {
+    console.error('Generate hotel voucher error:', error);
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: error.message || 'Failed to generate hotel voucher'
+      }
+    });
+  }
+};
+
+/**
+ * Generate tour voucher PDF
+ * POST /api/vouchers/generate/tour
+ */
+exports.generateTourVoucher = async (req, res) => {
+  try {
+    const { booking_id, tour_id } = req.body;
+
+    if (!booking_id || !tour_id) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Booking ID and Tour ID are required'
+        }
+      });
+    }
+
+    const result = await voucherService.generateTourVoucher(
+      parseInt(booking_id),
+      parseInt(tour_id)
+    );
+
+    res.json({
+      success: true,
+      message: 'Tour voucher generated successfully',
+      data: result.voucher
+    });
+  } catch (error) {
+    console.error('Generate tour voucher error:', error);
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: error.message || 'Failed to generate tour voucher'
+      }
+    });
+  }
+};
+
+/**
+ * Generate transfer voucher PDF
+ * POST /api/vouchers/generate/transfer
+ */
+exports.generateTransferVoucher = async (req, res) => {
+  try {
+    const { booking_id, transfer_id } = req.body;
+
+    if (!booking_id || !transfer_id) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Booking ID and Transfer ID are required'
+        }
+      });
+    }
+
+    const result = await voucherService.generateTransferVoucher(
+      parseInt(booking_id),
+      parseInt(transfer_id)
+    );
+
+    res.json({
+      success: true,
+      message: 'Transfer voucher generated successfully',
+      data: result.voucher
+    });
+  } catch (error) {
+    console.error('Generate transfer voucher error:', error);
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: error.message || 'Failed to generate transfer voucher'
+      }
+    });
+  }
+};
+
+/**
+ * Generate flight voucher PDF
+ * POST /api/vouchers/generate/flight
+ */
+exports.generateFlightVoucher = async (req, res) => {
+  try {
+    const { booking_id, flight_id } = req.body;
+
+    if (!booking_id || !flight_id) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Booking ID and Flight ID are required'
+        }
+      });
+    }
+
+    const result = await voucherService.generateFlightVoucher(
+      parseInt(booking_id),
+      parseInt(flight_id)
+    );
+
+    res.json({
+      success: true,
+      message: 'Flight voucher generated successfully',
+      data: result.voucher
+    });
+  } catch (error) {
+    console.error('Generate flight voucher error:', error);
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: error.message || 'Failed to generate flight voucher'
+      }
+    });
+  }
+};
+
+/**
+ * Download voucher PDF
+ * GET /api/vouchers/:id/download
+ */
+exports.downloadVoucher = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Fetch voucher
+    const result = await query(
+      'SELECT pdf_path, voucher_number FROM vouchers WHERE id = $1',
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: 'NOT_FOUND',
+          message: 'Voucher not found'
+        }
+      });
+    }
+
+    const voucher = result.rows[0];
+
+    if (!voucher.pdf_path) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: 'NOT_FOUND',
+          message: 'PDF file not found for this voucher'
+        }
+      });
+    }
+
+    // Extract just the filename from the stored path
+    const fileName = path.basename(voucher.pdf_path);
+    // Construct the correct path relative to the backend directory
+    const filePath = path.join(__dirname, '../../vouchers', fileName);
+
+    // Check if file exists
+    const fs = require('fs');
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: 'NOT_FOUND',
+          message: 'PDF file not found on server'
+        }
+      });
+    }
+
+    // Send file
+    const downloadName = `${voucher.voucher_number}.pdf`;
+    res.download(filePath, downloadName, (err) => {
+      if (err) {
+        console.error('Download error:', err);
+        if (!res.headersSent) {
+          res.status(500).json({
+            success: false,
+            error: {
+              code: 'DOWNLOAD_ERROR',
+              message: 'Failed to download voucher'
+            }
+          });
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Download voucher error:', error);
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'Failed to download voucher'
       }
     });
   }

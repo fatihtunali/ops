@@ -27,7 +27,8 @@ exports.getMonthlyPL = async (req, res) => {
     const endDate = new Date(year, monthNum, 0); // Last day of month
     const endDateStr = `${year}-${monthNum}-${endDate.getDate()}`;
 
-    // Get revenue from confirmed bookings
+    // Get revenue from confirmed bookings based on travel date
+    // This ensures bookings appear in the P&L for the month they actually travel
     const revenueQuery = await pool.query(`
       SELECT
         COUNT(*) as booking_count,
@@ -36,8 +37,8 @@ exports.getMonthlyPL = async (req, res) => {
         COALESCE(SUM(gross_profit), 0) as gross_profit
       FROM bookings
       WHERE is_confirmed = true
-        AND confirmed_at >= $1
-        AND confirmed_at <= $2
+        AND travel_date_from >= $1
+        AND travel_date_from <= $2
     `, [startDate, endDateStr]);
 
     // Get cost breakdown by service type
@@ -53,8 +54,8 @@ exports.getMonthlyPL = async (req, res) => {
       LEFT JOIN booking_transfers btr ON b.id = btr.booking_id
       LEFT JOIN booking_flights bf ON b.id = bf.booking_id
       WHERE b.is_confirmed = true
-        AND b.confirmed_at >= $1
-        AND b.confirmed_at <= $2
+        AND b.travel_date_from >= $1
+        AND b.travel_date_from <= $2
     `, [startDate, endDateStr]);
 
     // Get operational expenses

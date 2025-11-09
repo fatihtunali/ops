@@ -9,13 +9,13 @@ const PassengerForm = ({
   onCancel
 }) => {
   const [formData, setFormData] = useState({
-    passenger_name: '',
-    passenger_type: 'adult', // adult, child, infant
+    name: '',
+    passenger_type: 'adult', // adult, child, infant (frontend-only, not saved to DB)
     date_of_birth: '',
     passport_number: '',
-    passport_expiry: '',
+    passport_expiry: '', // frontend-only, not saved to DB
     nationality: '',
-    notes: '',
+    special_requests: '',
   });
 
   const [errors, setErrors] = useState({});
@@ -42,8 +42,8 @@ const PassengerForm = ({
   const validate = () => {
     const newErrors = {};
 
-    if (!formData.passenger_name.trim()) {
-      newErrors.passenger_name = 'Passenger name is required';
+    if (!formData.name.trim()) {
+      newErrors.name = 'Passenger name is required';
     }
 
     // Validate passport expiry if passport number is provided
@@ -90,10 +90,10 @@ const PassengerForm = ({
             <Input
               type="text"
               label="Passenger Name"
-              value={formData.passenger_name}
-              onChange={(e) => handleChange('passenger_name', e.target.value)}
+              value={formData.name}
+              onChange={(e) => handleChange('name', e.target.value)}
               placeholder="Full name as on passport"
-              error={errors.passenger_name}
+              error={errors.name}
               required
             />
           </div>
@@ -161,13 +161,13 @@ const PassengerForm = ({
           </div>
         </div>
 
-        {/* Notes */}
+        {/* Special Requests */}
         <div>
           <Input
             type="textarea"
-            label="Notes"
-            value={formData.notes}
-            onChange={(e) => handleChange('notes', e.target.value)}
+            label="Special Requests"
+            value={formData.special_requests}
+            onChange={(e) => handleChange('special_requests', e.target.value)}
             rows="3"
             placeholder="Special requirements, dietary restrictions, etc."
           />

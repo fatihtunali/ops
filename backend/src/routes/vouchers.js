@@ -14,11 +14,25 @@ const { auth } = require('../middleware/auth');
 router.get('/', auth, voucherController.getAll);
 
 /**
+ * @route   GET /api/vouchers/booking/:bookingId/services
+ * @desc    Get all services for a booking (for voucher selection)
+ * @access  Private
+ */
+router.get('/booking/:bookingId/services', auth, voucherController.getBookingServices);
+
+/**
  * @route   GET /api/vouchers/:id
  * @desc    Get single voucher by ID
  * @access  Private
  */
 router.get('/:id', auth, voucherController.getById);
+
+/**
+ * @route   GET /api/vouchers/:id/download
+ * @desc    Download voucher PDF
+ * @access  Private
+ */
+router.get('/:id/download', auth, voucherController.downloadVoucher);
 
 /**
  * @route   POST /api/vouchers
@@ -53,5 +67,37 @@ router.put('/:id', auth, voucherController.update);
  * @access  Private
  */
 router.delete('/:id', auth, voucherController.deleteVoucher);
+
+/**
+ * @route   POST /api/vouchers/generate/hotel
+ * @desc    Generate hotel voucher PDF
+ * @access  Private
+ * @body    { booking_id: integer, hotel_id: integer }
+ */
+router.post('/generate/hotel', auth, voucherController.generateHotelVoucher);
+
+/**
+ * @route   POST /api/vouchers/generate/tour
+ * @desc    Generate tour voucher PDF
+ * @access  Private
+ * @body    { booking_id: integer, tour_id: integer }
+ */
+router.post('/generate/tour', auth, voucherController.generateTourVoucher);
+
+/**
+ * @route   POST /api/vouchers/generate/transfer
+ * @desc    Generate transfer voucher PDF
+ * @access  Private
+ * @body    { booking_id: integer, transfer_id: integer }
+ */
+router.post('/generate/transfer', auth, voucherController.generateTransferVoucher);
+
+/**
+ * @route   POST /api/vouchers/generate/flight
+ * @desc    Generate flight voucher PDF
+ * @access  Private
+ * @body    { booking_id: integer, flight_id: integer }
+ */
+router.post('/generate/flight', auth, voucherController.generateFlightVoucher);
 
 module.exports = router;

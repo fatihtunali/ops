@@ -151,7 +151,9 @@ const Reports = () => {
                 </div>
                 <div>
                   <p className="text-sm text-slate-600">Total Revenue</p>
-                  <p className="text-2xl font-bold text-slate-900">{formatCurrency(plData.total_revenue || 0)}</p>
+                  <p className="text-2xl font-bold text-slate-900">
+                    {formatCurrency(plData.revenue?.total_bookings_revenue || 0)}
+                  </p>
                 </div>
               </div>
             </Card>
@@ -163,7 +165,9 @@ const Reports = () => {
                 </div>
                 <div>
                   <p className="text-sm text-slate-600">Total Cost</p>
-                  <p className="text-2xl font-bold text-slate-900">{formatCurrency(plData.total_cost || 0)}</p>
+                  <p className="text-2xl font-bold text-slate-900">
+                    {formatCurrency(plData.direct_costs?.total || 0)}
+                  </p>
                 </div>
               </div>
             </Card>
@@ -189,17 +193,31 @@ const Reports = () => {
             <div className="space-y-3">
               <div className="flex justify-between py-2 border-b border-slate-200">
                 <span className="text-slate-600">Number of Bookings</span>
-                <span className="font-semibold">{plData.booking_count || 0}</span>
+                <span className="font-semibold">{plData.revenue?.booking_count || 0}</span>
               </div>
               <div className="flex justify-between py-2 border-b border-slate-200">
                 <span className="text-slate-600">Average Booking Value</span>
-                <span className="font-semibold">{formatCurrency((plData.total_revenue || 0) / (plData.booking_count || 1))}</span>
+                <span className="font-semibold">
+                  {formatCurrency((plData.revenue?.total_bookings_revenue || 0) / (plData.revenue?.booking_count || 1))}
+                </span>
+              </div>
+              <div className="flex justify-between py-2 border-b border-slate-200">
+                <span className="text-slate-600">Gross Profit</span>
+                <span className="font-semibold text-blue-600">
+                  {formatCurrency(plData.gross_profit || 0)}
+                </span>
+              </div>
+              <div className="flex justify-between py-2 border-b border-slate-200">
+                <span className="text-slate-600">Operational Expenses</span>
+                <span className="font-semibold text-red-600">
+                  {formatCurrency(plData.operational_expenses?.total || 0)}
+                </span>
               </div>
               <div className="flex justify-between py-2 border-b border-slate-200">
                 <span className="text-slate-600">Profit Margin</span>
                 <span className="font-semibold">
-                  {plData.total_revenue > 0
-                    ? `${(((plData.net_profit || 0) / plData.total_revenue) * 100).toFixed(1)}%`
+                  {(plData.revenue?.total_bookings_revenue || 0) > 0
+                    ? `${(((plData.net_profit || 0) / (plData.revenue?.total_bookings_revenue || 1)) * 100).toFixed(1)}%`
                     : '0%'}
                 </span>
               </div>

@@ -27,7 +27,11 @@ api.interceptors.request.use(
 // Response interceptor - Handle errors globally
 api.interceptors.response.use(
   (response) => {
-    // Return response data directly
+    // For blob responses, return the full response object to preserve the blob
+    if (response.config.responseType === 'blob') {
+      return response;
+    }
+    // Return response data directly for JSON responses
     return response.data;
   },
   (error) => {

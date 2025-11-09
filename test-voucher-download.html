@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Voucher Download</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+<body>
+    <h1>Voucher Download Test</h1>
+    <button id="testDownload">Test Download Voucher #2</button>
+    <button id="testPrint">Test Print Voucher #2</button>
+    <div id="status"></div>
+
+    <script>
+        // Create axios instance with interceptor (mimicking the app)
+        const api = axios.create({
+            baseURL: 'http://localhost:5000/api',
+            timeout: 30000,
+        });
+
+        // Response interceptor - Handle blob responses correctly
+        api.interceptors.response.use(
+            (response) => {
+                // For blob responses, return the full response object
+                if (response.config.responseType === 'blob') {
+                    return response;
+                }
+                // Return response data directly for JSON responses
+                return response.data;
+            },
+            (error) => {
+                return Promise.reject(error);
+            }
+        );
+
+        // Download voucher function
+        async function downloadVoucher(voucherId) {
+            try {
+                const response = await api.get(`/vouchers/${voucherId}/download`, {
+                    responseType: 'blob'
+                });
+                const blob = response.data;
+
+                // Download the file
+                const url = window.URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `voucher_${voucherId}.pdf`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                window.URL.revokeObjectURL(url);
+
+                document.getElementById('status').innerHTML = '<p style="color: green;">✓ Download successful!</p>';
+            } catch (err) {
+                console.error('Failed to download voucher:', err);
+                document.getElementById('status').innerHTML = `<p style="color: red;">✗ Download failed: ${err.message}</p>`;
+            }
+        }
+
+        // Print voucher function
+        async function printVoucher(voucherId) {
+            try {
+                const response = await api.get(`/vouchers/${voucherId}/download`, {
+                    responseType: 'blob'
+                });
+                const blob = response.data;
+
+                // Print the file
+                const url = window.URL.createObjectURL(blob);
+                const iframe = document.createElement('iframe');
+                iframe.style.display = 'none';
+                iframe.src = url;
+                document.body.appendChild(iframe);
+                iframe.onload = function() {
+                    iframe.contentWindow.print();
+                };
+                setTimeout(() => {
+                    document.body.removeChild(iframe);
+                    window.URL.revokeObjectURL(url);
+                }, 1000);
+
+                document.getElementById('status').innerHTML = '<p style="color: green;">✓ Print dialog opened!</p>';
+            } catch (err) {
+                console.error('Failed to print voucher:', err);
+                document.getElementById('status').innerHTML = `<p style="color: red;">✗ Print failed: ${err.message}</p>`;
+            }
+        }
+
+        // Event listeners
+        document.getElementById('testDownload').addEventListener('click', () => {
+            downloadVoucher(2);
+        });
+
+        document.getElementById('testPrint').addEventListener('click', () => {
+            printVoucher(2);
+        });
+    </script>
+</body>
+</html>

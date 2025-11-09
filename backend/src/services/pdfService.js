@@ -46,8 +46,15 @@ exports.generateHotelVoucher = async (voucherData) => {
       passengers.forEach(passenger => {
         doc.text(`Name: ${passenger.name}`);
       });
-      doc.text(`Check-in: ${hotel.check_in}`);
-      doc.text(`Check-out: ${hotel.check_out}`);
+
+      // Format check-in and check-out dates properly (dd.MM.yyyy)
+      const formatDate = (dateStr) => {
+        const date = new Date(dateStr);
+        return `${String(date.getDate()).padStart(2, '0')}.${String(date.getMonth() + 1).padStart(2, '0')}.${date.getFullYear()}`;
+      };
+
+      doc.text(`Check-in Date: ${formatDate(hotel.check_in)} (after 15:00)`);
+      doc.text(`Check-out Date: ${formatDate(hotel.check_out)} (before 11:00)`);
       doc.text(`Nights: ${hotel.nights}`);
       doc.text(`Room Type: ${hotel.room_type}`);
       doc.text(`Number of Rooms: ${hotel.number_of_rooms}`);
@@ -130,7 +137,11 @@ exports.generateTourVoucher = async (voucherData) => {
         doc.text(`Name: ${passenger.name}`);
       });
       doc.text(`Pax Count: ${tour.pax_count} person(s)`);
-      doc.text(`Tour Date: ${tour.tour_date}`);
+
+      // Format tour date properly (dd.MM.yyyy)
+      const tourDate = new Date(tour.tour_date);
+      const formattedTourDate = `${String(tourDate.getDate()).padStart(2, '0')}.${String(tourDate.getMonth() + 1).padStart(2, '0')}.${tourDate.getFullYear()}`;
+      doc.text(`Tour Date: ${formattedTourDate}`);
       doc.moveDown(2);
 
       // Tour Details
@@ -138,8 +149,15 @@ exports.generateTourVoucher = async (voucherData) => {
       doc.moveDown(0.5);
       doc.fontSize(10);
       doc.text(`Tour: ${tour.tour_name}`);
-      doc.text(`Duration: ${tour.duration}`);
-      doc.text(`Operation Type: ${tour.operation_type}`);
+
+      // Show duration only if available
+      if (tour.duration) {
+        doc.text(`Duration: ${tour.duration}`);
+      }
+
+      // Show tour type (SIC or Private) instead of operation type
+      const tourType = tour.tour_type || (tour.operation_type === 'self-operated' ? 'Private' : 'SIC');
+      doc.text(`Tour Type: ${tourType}`);
       doc.moveDown();
 
       // Guide and Vehicle info (if self-operated)
@@ -235,11 +253,35 @@ exports.generateTransferVoucher = async (voucherData) => {
       doc.fontSize(14).text('TRANSFER DETAILS', { underline: true });
       doc.moveDown(0.5);
       doc.fontSize(10);
-      doc.text(`Transfer Type: ${transfer.transfer_type}`);
-      doc.text(`Date: ${transfer.transfer_date}`);
-      doc.text(`From: ${transfer.from_location}`);
-      doc.text(`To: ${transfer.to_location}`);
-      doc.text(`Vehicle Type: ${transfer.vehicle_type}`);
+
+      // Format transfer date properly (dd.MM.yyyy)
+      const formatDate = (dateStr) => {
+        const date = new Date(dateStr);
+        return `${String(date.getDate()).padStart(2, '0')}.${String(date.getMonth() + 1).padStart(2, '0')}.${date.getFullYear()}`;
+      };
+
+      // Capitalize transfer type
+      const transferTypeLabel = transfer.transfer_type.charAt(0).toUpperCase() + transfer.transfer_type.slice(1);
+      doc.text(`Service: ${transferTypeLabel} Transfer`);
+      doc.text(`Transfer Date: ${formatDate(transfer.transfer_date)}`);
+      doc.text(`Pickup Location: ${transfer.from_location}`);
+      doc.text(`Drop-off Location: ${transfer.to_location}`);
+      doc.text(`Vehicle: ${transfer.vehicle_type}`);
+      doc.text(`Number of Passengers: ${transfer.pax_count}`);
+
+      // Add flight details if available (for airport transfers)
+      if (transfer.flight_number) {
+        doc.moveDown(0.5);
+        doc.fontSize(12).text('Flight Information:', { underline: true });
+        doc.fontSize(10);
+        doc.text(`Flight Number: ${transfer.flight_number}`);
+        if (transfer.flight_time) {
+          doc.text(`Flight Time: ${transfer.flight_time}`);
+        }
+        if (transfer.terminal) {
+          doc.text(`Terminal: ${transfer.terminal}`);
+        }
+      }
       doc.moveDown();
 
       // Vehicle info (if self-operated)
@@ -335,8 +377,17 @@ exports.generateFlightVoucher = async (voucherData) => {
       doc.text(`Flight Number: ${flight.flight_number}`);
       doc.text(`From: ${flight.from_airport}`);
       doc.text(`To: ${flight.to_airport}`);
-      doc.text(`Departure: ${flight.departure_date}`);
-      doc.text(`Arrival: ${flight.arrival_date}`);
+
+      // Format flight dates properly (dd.MM.yyyy)
+      const formatDate = (dateStr) => {
+        const date = new Date(dateStr);
+        return `${String(date.getDate()).padStart(2, '0')}.${String(date.getMonth() + 1).padStart(2, '0')}.${date.getFullYear()}`;
+      };
+
+      doc.text(`Departure: ${formatDate(flight.departure_date)}`);
+      if (flight.arrival_date) {
+        doc.text(`Arrival: ${formatDate(flight.arrival_date)}`);
+      }
       doc.text(`PNR: ${flight.pnr}`);
       if (flight.ticket_numbers) {
         doc.text(`Ticket Numbers: ${flight.ticket_numbers}`);

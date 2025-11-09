@@ -350,7 +350,7 @@ const BookingDetails = () => {
                   <div className="text-center py-12">
                     <BuildingOfficeIcon className="h-12 w-12 text-slate-300 mx-auto mb-4" />
                     <p className="text-slate-500 mb-4">No hotels added yet</p>
-                    <Button size="sm">Add Hotel</Button>
+                    <Button size="sm" onClick={() => navigate(`/bookings/${id}/edit`)}>Add Hotel</Button>
                   </div>
                 ) : (
                   <div className="space-y-4">
@@ -404,7 +404,7 @@ const BookingDetails = () => {
                   <div className="text-center py-12">
                     <GlobeAltIcon className="h-12 w-12 text-slate-300 mx-auto mb-4" />
                     <p className="text-slate-500 mb-4">No tours added yet</p>
-                    <Button size="sm">Add Tour</Button>
+                    <Button size="sm" onClick={() => navigate(`/bookings/${id}/edit`)}>Add Tour</Button>
                   </div>
                 ) : (
                   <div className="space-y-4">
@@ -456,7 +456,7 @@ const BookingDetails = () => {
                   <div className="text-center py-12">
                     <TruckIcon className="h-12 w-12 text-slate-300 mx-auto mb-4" />
                     <p className="text-slate-500 mb-4">No transfers added yet</p>
-                    <Button size="sm">Add Transfer</Button>
+                    <Button size="sm" onClick={() => navigate(`/bookings/${id}/edit`)}>Add Transfer</Button>
                   </div>
                 ) : (
                   <div className="space-y-4">
@@ -492,6 +492,31 @@ const BookingDetails = () => {
                             <p className="font-medium">{transfer.to_location}</p>
                           </div>
                         </div>
+                        {/* Flight Information (if available) */}
+                        {(transfer.flight_number || transfer.flight_time || transfer.terminal) && (
+                          <div className="mt-3 pt-3 border-t border-blue-100">
+                            <div className="grid grid-cols-3 gap-4 text-sm">
+                              {transfer.flight_number && (
+                                <div>
+                                  <span className="text-blue-600">Flight:</span>
+                                  <p className="font-medium text-blue-900">{transfer.flight_number}</p>
+                                </div>
+                              )}
+                              {transfer.flight_time && (
+                                <div>
+                                  <span className="text-blue-600">Time:</span>
+                                  <p className="font-medium text-blue-900">{transfer.flight_time}</p>
+                                </div>
+                              )}
+                              {transfer.terminal && (
+                                <div>
+                                  <span className="text-blue-600">Terminal:</span>
+                                  <p className="font-medium text-blue-900">{transfer.terminal}</p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -505,7 +530,7 @@ const BookingDetails = () => {
                 {flights.length === 0 ? (
                   <div className="text-center py-12">
                     <p className="text-slate-500 mb-4">No flights added yet</p>
-                    <Button size="sm">Add Flight</Button>
+                    <Button size="sm" onClick={() => navigate(`/bookings/${id}/edit`)}>Add Flight</Button>
                   </div>
                 ) : (
                   <div className="space-y-4">
@@ -553,7 +578,7 @@ const BookingDetails = () => {
                   <div className="text-center py-12">
                     <UsersIcon className="h-12 w-12 text-slate-300 mx-auto mb-4" />
                     <p className="text-slate-500 mb-4">No passengers added yet</p>
-                    <Button size="sm">Add Passenger</Button>
+                    <Button size="sm" onClick={() => navigate(`/bookings/${id}/edit`)}>Add Passenger</Button>
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
@@ -569,9 +594,9 @@ const BookingDetails = () => {
                       <tbody className="bg-white divide-y divide-blue-200">
                         {passengers.map((passenger) => (
                           <tr key={passenger.id}>
-                            <td className="px-4 py-3 text-sm text-slate-900">{passenger.full_name}</td>
-                            <td className="px-4 py-3 text-sm text-slate-700">{passenger.passport_number}</td>
-                            <td className="px-4 py-3 text-sm text-slate-700">{passenger.nationality}</td>
+                            <td className="px-4 py-3 text-sm text-slate-900">{passenger.name}</td>
+                            <td className="px-4 py-3 text-sm text-slate-700">{passenger.passport_number || '-'}</td>
+                            <td className="px-4 py-3 text-sm text-slate-700">{passenger.nationality || '-'}</td>
                             <td className="px-4 py-3 text-sm text-slate-700">{formatDate(passenger.date_of_birth)}</td>
                           </tr>
                         ))}
@@ -591,25 +616,25 @@ const BookingDetails = () => {
                       <div className="bg-blue-50 rounded-lg p-4">
                         <p className="text-xs text-blue-600 uppercase mb-1">Total Revenue</p>
                         <p className="text-2xl font-bold text-blue-700">
-                          {formatCurrency(profitability.total_revenue)}
+                          {formatCurrency(profitability.totals?.total_sell_price || 0)}
                         </p>
                       </div>
                       <div className="bg-red-50 rounded-lg p-4">
                         <p className="text-xs text-red-600 uppercase mb-1">Total Cost</p>
                         <p className="text-2xl font-bold text-red-700">
-                          {formatCurrency(profitability.total_cost)}
+                          {formatCurrency(profitability.totals?.total_cost_price || 0)}
                         </p>
                       </div>
                       <div className="bg-green-50 rounded-lg p-4">
                         <p className="text-xs text-green-600 uppercase mb-1">Gross Profit</p>
                         <p className="text-2xl font-bold text-green-700">
-                          {formatCurrency(profitability.gross_profit)}
+                          {formatCurrency(profitability.totals?.gross_profit || 0)}
                         </p>
                       </div>
                       <div className="bg-purple-50 rounded-lg p-4">
                         <p className="text-xs text-purple-600 uppercase mb-1">Profit Margin</p>
                         <p className="text-2xl font-bold text-purple-700">
-                          {profitability.profit_margin}%
+                          {profitability.totals?.margin_percentage || 0}%
                         </p>
                       </div>
                     </div>

@@ -18,6 +18,7 @@ exports.getAllBookingTransfers = async (req, res) => {
         bt.cost_price, bt.sell_price, bt.margin,
         bt.payment_status, bt.paid_amount, bt.confirmation_number,
         bt.voucher_issued, bt.notes, bt.created_at,
+        bt.flight_number, bt.flight_time, bt.terminal,
         ts.name as supplier_name,
         v.vehicle_number
       FROM booking_transfers bt
@@ -97,6 +98,7 @@ exports.getBookingTransferById = async (req, res) => {
         bt.cost_price, bt.sell_price, bt.margin,
         bt.payment_status, bt.paid_amount, bt.confirmation_number,
         bt.voucher_issued, bt.notes, bt.created_at,
+        bt.flight_number, bt.flight_time, bt.terminal,
         ts.company_name as supplier_name,
         v.vehicle_number
       FROM booking_transfers bt
@@ -320,13 +322,13 @@ exports.createBookingTransfer = async (req, res) => {
         booking_id, transfer_type, transfer_date, from_location, to_location,
         pax_count, vehicle_type, operation_type, supplier_id, vehicle_id,
         cost_price, sell_price, margin, payment_status, paid_amount,
-        confirmation_number, voucher_issued, notes
+        confirmation_number, voucher_issued, notes, flight_number, flight_time, terminal
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
       RETURNING id, booking_id, transfer_type, transfer_date, from_location, to_location,
                 pax_count, vehicle_type, operation_type, supplier_id, vehicle_id,
                 cost_price, sell_price, margin, payment_status, paid_amount,
-                confirmation_number, voucher_issued, notes, created_at`,
+                confirmation_number, voucher_issued, notes, flight_number, flight_time, terminal, created_at`,
       [
         booking_id,
         transfer_type || null,
@@ -345,7 +347,10 @@ exports.createBookingTransfer = async (req, res) => {
         paid_amount || 0,
         confirmation_number || null,
         voucher_issued || false,
-        notes || null
+        notes || null,
+        req.body.flight_number || null,
+        req.body.flight_time || null,
+        req.body.terminal || null
       ]
     );
 
@@ -600,6 +605,21 @@ exports.updateBookingTransfer = async (req, res) => {
       params.push(notes);
       paramCount++;
     }
+    if (req.body.flight_number !== undefined) {
+      updateFields.push(`flight_number = $${paramCount}`);
+      params.push(req.body.flight_number);
+      paramCount++;
+    }
+    if (req.body.flight_time !== undefined) {
+      updateFields.push(`flight_time = $${paramCount}`);
+      params.push(req.body.flight_time);
+      paramCount++;
+    }
+    if (req.body.terminal !== undefined) {
+      updateFields.push(`terminal = $${paramCount}`);
+      params.push(req.body.terminal);
+      paramCount++;
+    }
 
     if (updateFields.length === 0) {
       return res.status(400).json({
@@ -621,7 +641,7 @@ exports.updateBookingTransfer = async (req, res) => {
        RETURNING id, booking_id, transfer_type, transfer_date, from_location, to_location,
                  pax_count, vehicle_type, operation_type, supplier_id, vehicle_id,
                  cost_price, sell_price, margin, payment_status, paid_amount,
-                 confirmation_number, voucher_issued, notes, created_at`,
+                 confirmation_number, voucher_issued, notes, flight_number, flight_time, terminal, created_at`,
       params
     );
 
