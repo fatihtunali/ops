@@ -294,10 +294,10 @@ const Login = () => {
 
       {/* Backend Status Bar - Fixed at bottom */}
       <div className="fixed bottom-0 left-0 right-0 bg-slate-900/95 backdrop-blur-sm border-t border-slate-700 shadow-lg z-50">
-        <div className="max-w-7xl mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-3 py-2 sm:px-4 sm:py-3">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-4">
             {/* Status indicators */}
-            <div className="flex items-center space-x-6">
+            <div className="flex items-center flex-wrap justify-center sm:justify-start gap-3 sm:gap-6">
               {/* Backend Server Status */}
               <div className="flex items-center space-x-2">
                 <div className={`w-2.5 h-2.5 rounded-full ${
@@ -307,8 +307,9 @@ const Login = () => {
                       ? 'bg-green-500'
                       : 'bg-red-500'
                 }`}></div>
-                <span className="text-sm font-medium text-slate-300">
-                  Backend: {healthStatus.checking ? 'Checking...' : healthStatus.server ? 'Online' : 'Offline'}
+                <span className="text-xs sm:text-sm font-medium text-slate-300">
+                  <span className="hidden sm:inline">Backend: </span>
+                  {healthStatus.checking ? 'Checking...' : healthStatus.server ? 'Online' : 'Offline'}
                 </span>
               </div>
 
@@ -321,14 +322,15 @@ const Login = () => {
                       ? 'bg-green-500'
                       : 'bg-red-500'
                 }`}></div>
-                <span className="text-sm font-medium text-slate-300">
-                  Database: {healthStatus.checking ? 'Checking...' : healthStatus.database ? 'Connected' : 'Disconnected'}
+                <span className="text-xs sm:text-sm font-medium text-slate-300">
+                  <span className="hidden sm:inline">Database: </span>
+                  {healthStatus.checking ? 'Checking...' : healthStatus.database ? 'Connected' : 'Disconnected'}
                 </span>
               </div>
 
-              {/* API Endpoints Count */}
+              {/* API Endpoints Count - Hide on very small screens */}
               {!healthStatus.checking && healthStatus.apis > 0 && (
-                <div className="flex items-center space-x-2">
+                <div className="hidden md:flex items-center space-x-2">
                   <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
@@ -339,20 +341,25 @@ const Login = () => {
               )}
             </div>
 
-            {/* Status message */}
-            <div className="flex items-center space-x-3">
-              <p className="text-xs text-slate-400">
+            {/* Status message - Hide on small screens, show badge instead */}
+            <div className="flex items-center space-x-2 sm:space-x-3">
+              <p className="hidden md:block text-xs text-slate-400">
                 {healthStatus.message}
               </p>
 
               {/* Overall status badge */}
               {!healthStatus.checking && (
-                <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                <span className={`px-2 sm:px-3 py-1 rounded-full text-xs font-medium ${
                   healthStatus.server && healthStatus.database
                     ? 'bg-green-900/50 text-green-300 border border-green-700'
                     : 'bg-red-900/50 text-red-300 border border-red-700'
                 }`}>
-                  {healthStatus.server && healthStatus.database ? 'All Systems Operational' : 'System Issues Detected'}
+                  <span className="hidden sm:inline">
+                    {healthStatus.server && healthStatus.database ? 'All Systems Operational' : 'System Issues Detected'}
+                  </span>
+                  <span className="sm:hidden">
+                    {healthStatus.server && healthStatus.database ? 'OK' : 'Issues'}
+                  </span>
                 </span>
               )}
             </div>

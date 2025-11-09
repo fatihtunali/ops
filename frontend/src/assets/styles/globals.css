@@ -72,3 +72,51 @@ h4 {
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   transition-duration: 150ms;
 }
+
+/* iOS Safari Touch Fixes - Prevent Double-Tap Issue */
+* {
+  /* Remove tap highlight on iOS */
+  -webkit-tap-highlight-color: transparent;
+  /* Prevent double-tap-to-zoom on iOS */
+  touch-action: manipulation;
+}
+
+/* Ensure all interactive elements have proper cursor and touch handling */
+button,
+a,
+[role="button"],
+[type="button"],
+[type="submit"],
+[type="reset"],
+select,
+label[for],
+input[type="checkbox"],
+input[type="radio"] {
+  cursor: pointer;
+  /* Prevent 300ms click delay on mobile */
+  touch-action: manipulation;
+  /* Better touch feedback */
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+}
+
+/* Improve touch target sizes for mobile (iOS guidelines recommend 44x44px minimum) */
+@media (max-width: 768px) {
+  button,
+  a,
+  [role="button"],
+  [type="button"],
+  [type="submit"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* Remove hover effects on touch devices to prevent sticky hover states */
+@media (hover: none) and (pointer: coarse) {
+  button:hover,
+  a:hover,
+  [role="button"]:hover {
+    /* Reset any hover-only effects that might cause issues */
+    opacity: 1;
+  }
+}

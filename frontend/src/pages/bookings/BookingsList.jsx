@@ -123,16 +123,18 @@ const BookingsList = () => {
     <MainLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h1 className="text-2xl font-bold text-slate-900">Bookings</h1>
-            <p className="text-slate-600 mt-1">Manage all tour bookings and reservations</p>
+            <p className="text-slate-600 mt-1 text-sm sm:text-base">Manage all tour bookings and reservations</p>
           </div>
           <Button
             icon={PlusIcon}
             onClick={() => navigate('/bookings/create')}
+            className="w-full sm:w-auto"
           >
-            New Booking
+            <span className="hidden sm:inline">New Booking</span>
+            <span className="sm:hidden">New</span>
           </Button>
         </div>
 
@@ -262,7 +264,8 @@ const BookingsList = () => {
             </div>
           ) : (
             <>
-              <div className="overflow-x-auto">
+              {/* Desktop Table View */}
+              <div className="hidden md:block overflow-x-auto">
                 <table className="min-w-full divide-y divide-blue-200">
                   <thead className="bg-blue-50">
                     <tr>
@@ -393,6 +396,112 @@ const BookingsList = () => {
                     ))}
                   </tbody>
                 </table>
+              </div>
+
+              {/* Mobile Card View */}
+              <div className="md:hidden space-y-4 p-4">
+                {bookings.map((booking) => (
+                  <div
+                    key={booking.id || booking.booking_id}
+                    className="bg-white border border-blue-200 rounded-lg p-4 shadow-sm"
+                  >
+                    {/* Header with Booking Code and Status */}
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <div className="text-xs text-slate-500 mb-1">Booking Code</div>
+                        <div className="text-base font-bold text-blue-600">
+                          {booking.booking_code}
+                        </div>
+                      </div>
+                      <Badge
+                        variant={BOOKING_STATUS_COLORS[booking.status] || 'secondary'}
+                        size="sm"
+                      >
+                        {booking.status}
+                      </Badge>
+                    </div>
+
+                    {/* Client Info */}
+                    <div className="mb-3">
+                      <div className="text-xs text-slate-500 mb-1">Client</div>
+                      {booking.booked_by === 'agent' ? (
+                        <div className="flex flex-col gap-1">
+                          <div className="text-sm font-medium text-slate-900">
+                            {booking.client_name || 'N/A'}
+                          </div>
+                          {booking.traveler_name && (
+                            <div className="flex items-center gap-1 text-xs text-slate-600">
+                              <span>→ Traveler:</span>
+                              <span className="font-medium text-slate-700">{booking.traveler_name}</span>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="text-sm text-slate-900">
+                          {booking.client_name || 'N/A'}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Travel Dates and Type */}
+                    <div className="grid grid-cols-2 gap-3 mb-3">
+                      <div>
+                        <div className="text-xs text-slate-500 mb-1">Travel Dates</div>
+                        <div className="text-sm text-slate-700">
+                          {formatDate(booking.travel_date_from || booking.start_date)}
+                          <br />
+                          {formatDate(booking.travel_date_to || booking.end_date)}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-slate-500 mb-1">Type</div>
+                        {booking.booked_by === 'agent' ? (
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            Agent
+                          </span>
+                        ) : booking.booked_by === 'direct' ? (
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            Direct
+                          </span>
+                        ) : (
+                          <span className="text-xs text-slate-400">-</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* PAX and Total */}
+                    <div className="grid grid-cols-2 gap-3 mb-3 pb-3 border-b border-slate-200">
+                      <div>
+                        <div className="text-xs text-slate-500 mb-1">PAX</div>
+                        <div className="text-sm font-medium text-slate-700">{booking.pax_count}</div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-slate-500 mb-1">Total</div>
+                        <div className="text-sm font-bold text-slate-900">
+                          {formatCurrency(booking.total_sell_price)}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => navigate(`/bookings/${booking.id || booking.booking_id}`)}
+                        className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                      >
+                        <EyeIcon className="h-4 w-4" />
+                        View
+                      </button>
+                      <button
+                        onClick={() => navigate(`/bookings/${booking.id || booking.booking_id}/edit`)}
+                        className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors text-sm font-medium"
+                      >
+                        <PencilIcon className="h-4 w-4" />
+                        Edit
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
 
               {/* Pagination */}
