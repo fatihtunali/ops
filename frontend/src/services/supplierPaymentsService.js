@@ -7,7 +7,7 @@ export const supplierPaymentsService = {
   getAll: async (params = {}) => {
     try {
       const response = await api.get(SUPPLIER_PAYMENTS_ENDPOINT, { params });
-      return response.data;
+      return response; // Interceptor already extracts .data
     } catch (error) {
       console.error('Error fetching supplier payments:', error);
       throw error;
@@ -18,7 +18,7 @@ export const supplierPaymentsService = {
   getById: async (id) => {
     try {
       const response = await api.get(`${SUPPLIER_PAYMENTS_ENDPOINT}/${id}`);
-      return response.data;
+      return response; // Interceptor already extracts .data
     } catch (error) {
       console.error(`Error fetching supplier payment ${id}:`, error);
       throw error;
@@ -29,7 +29,7 @@ export const supplierPaymentsService = {
   create: async (paymentData) => {
     try {
       const response = await api.post(SUPPLIER_PAYMENTS_ENDPOINT, paymentData);
-      return response.data;
+      return response; // Interceptor already extracts .data
     } catch (error) {
       console.error('Error creating supplier payment:', error);
       throw error;
@@ -40,7 +40,7 @@ export const supplierPaymentsService = {
   update: async (id, paymentData) => {
     try {
       const response = await api.put(`${SUPPLIER_PAYMENTS_ENDPOINT}/${id}`, paymentData);
-      return response.data;
+      return response; // Interceptor already extracts .data
     } catch (error) {
       console.error(`Error updating supplier payment ${id}:`, error);
       throw error;
@@ -51,7 +51,7 @@ export const supplierPaymentsService = {
   delete: async (id) => {
     try {
       const response = await api.delete(`${SUPPLIER_PAYMENTS_ENDPOINT}/${id}`);
-      return response.data;
+      return response; // Interceptor already extracts .data
     } catch (error) {
       console.error(`Error deleting supplier payment ${id}:`, error);
       throw error;
@@ -62,7 +62,7 @@ export const supplierPaymentsService = {
   getSummary: async (params = {}) => {
     try {
       const response = await api.get(`${SUPPLIER_PAYMENTS_ENDPOINT}/summary`, { params });
-      return response.data;
+      return response; // Interceptor already extracts .data
     } catch (error) {
       console.error('Error fetching supplier payment summary:', error);
       throw error;
