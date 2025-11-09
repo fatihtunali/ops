@@ -347,7 +347,7 @@ exports.update = async (req, res) => {
 };
 
 /**
- * Delete hotel (soft delete - set status to inactive)
+ * Delete hotel (hard delete - permanently remove from database)
  * DELETE /api/hotels/:id
  */
 exports.deleteHotel = async (req, res) => {
@@ -356,7 +356,7 @@ exports.deleteHotel = async (req, res) => {
 
     // Check if hotel exists
     const checkResult = await query(
-      'SELECT id, status FROM hotels WHERE id = $1',
+      'SELECT id FROM hotels WHERE id = $1',
       [id]
     );
 
@@ -370,21 +370,32 @@ exports.deleteHotel = async (req, res) => {
       });
     }
 
-    // Soft delete by setting status to inactive
-    const result = await query(
-      'UPDATE hotels SET status = $1 WHERE id = $2 RETURNING *',
-      ['inactive', id]
+    // Check if hotel is used in any bookings
+    const bookingCheck = await query(
+      'SELECT COUNT(*) FROM booking_hotels WHERE hotel_id = $1',
+      [id]
     );
 
-    const hotel = {
-      ...result.rows[0],
-      created_at: formatDateTime(result.rows[0].created_at)
-    };
+    const bookingCount = parseInt(bookingCheck.rows[0].count);
+    if (bookingCount > 0) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'REFERENTIAL_INTEGRITY_ERROR',
+          message: 'Cannot delete hotel that is referenced in bookings. Please delete the related records first.'
+        }
+      });
+    }
+
+    // Hard delete - permanently remove from database
+    await query(
+      'DELETE FROM hotels WHERE id = $1',
+      [id]
+    );
 
     res.json({
       success: true,
-      message: 'Hotel deleted successfully (status set to inactive)',
-      data: hotel
+      message: 'Hotel deleted successfully'
     });
   } catch (error) {
     console.error('Delete hotel error:', error);

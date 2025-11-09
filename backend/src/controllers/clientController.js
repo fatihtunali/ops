@@ -497,7 +497,7 @@ exports.update = async (req, res) => {
 };
 
 /**
- * Delete client (soft delete - set status to inactive)
+ * Delete client (hard delete - permanently remove from database)
  * DELETE /api/clients/:id
  */
 exports.deleteClient = async (req, res) => {
@@ -520,15 +520,32 @@ exports.deleteClient = async (req, res) => {
       });
     }
 
-    // Soft delete - set status to inactive
+    // Check if client has any bookings (active or completed)
+    const bookingCheck = await query(
+      'SELECT COUNT(*) FROM bookings WHERE client_id = $1',
+      [id]
+    );
+
+    const bookingCount = parseInt(bookingCheck.rows[0].count);
+    if (bookingCount > 0) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'REFERENTIAL_INTEGRITY_ERROR',
+          message: 'Cannot delete client with existing bookings. Please delete the bookings first.'
+        }
+      });
+    }
+
+    // Hard delete - permanently remove from database
     await query(
-      'UPDATE clients SET status = $1 WHERE id = $2',
-      ['inactive', id]
+      'DELETE FROM clients WHERE id = $1',
+      [id]
     );
 
     res.json({
       success: true,
-      message: 'Client deleted successfully (status set to inactive)'
+      message: 'Client deleted successfully'
     });
   } catch (error) {
     console.error('Delete client error:', error);

@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import MainLayout from '@components/layout/MainLayout';
-import { Card, Button, Input, Badge, Loader, Modal } from '@components/common';
+import { Card, Button, Input, Badge, Loader, Modal, CitySelect } from '@components/common';
 import { hotelsService } from '@services/hotelsService';
+import { useToast } from '@context/ToastContext';
 import { formatCurrency, formatDate } from '@utils/formatters';
 import {
   PlusIcon,
@@ -14,9 +15,11 @@ import {
 } from '@heroicons/react/24/outline';
 
 const HotelsList = () => {
+  const toast = useToast();
   const [hotels, setHotels] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   // Filters
   const [searchTerm, setSearchTerm] = useState('');
@@ -182,7 +185,8 @@ const HotelsList = () => {
       setSeasonalRates(Array.isArray(data) ? data : data.data || []);
     } catch (err) {
       console.error('Failed to fetch seasonal rates:', err);
-      alert('Failed to load seasonal rates');
+      const errorMsg = err.response?.data?.error?.message || 'Failed to load seasonal rates';
+      toast.error(errorMsg);
     } finally {
       setLoadingRates(false);
     }
@@ -229,10 +233,12 @@ const HotelsList = () => {
 
     try {
       await hotelsService.deleteSeasonalRate(selectedHotel.id, rateId);
+      toast.success('Seasonal rate deleted successfully');
       await fetchSeasonalRates(selectedHotel.id);
     } catch (err) {
       console.error('Failed to delete rate:', err);
-      alert('Failed to delete rate');
+      const errorMsg = err.response?.data?.error?.message || 'Failed to delete rate';
+      toast.error(errorMsg);
     }
   };
 
@@ -254,15 +260,18 @@ const HotelsList = () => {
 
       if (editingRate) {
         await hotelsService.updateSeasonalRate(selectedHotel.id, editingRate.id, submitData);
+        toast.success('Seasonal rate updated successfully');
       } else {
         await hotelsService.createSeasonalRate(selectedHotel.id, submitData);
+        toast.success('Seasonal rate created successfully');
       }
 
       setShowRateForm(false);
       await fetchSeasonalRates(selectedHotel.id);
     } catch (err) {
       console.error('Failed to save rate:', err);
-      alert(err.response?.data?.error?.message || 'Failed to save rate');
+      const errorMsg = err.response?.data?.error?.message || 'Failed to save rate';
+      toast.error(errorMsg);
     } finally {
       setSubmitting(false);
     }
@@ -273,12 +282,17 @@ const HotelsList = () => {
       return;
     }
 
+    setDeleting(true);
     try {
       await hotelsService.delete(hotel.id);
+      toast.success('Hotel deleted successfully');
       fetchHotels();
     } catch (err) {
       console.error('Failed to delete hotel:', err);
-      alert('Failed to delete hotel. Please try again.');
+      const errorMsg = err.response?.data?.error?.message || 'Failed to delete hotel. Please try again.';
+      toast.error(errorMsg);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -309,15 +323,18 @@ const HotelsList = () => {
     try {
       if (editingHotel) {
         await hotelsService.update(editingHotel.id, formData);
+        toast.success('Hotel updated successfully');
       } else {
         await hotelsService.create(formData);
+        toast.success('Hotel created successfully');
       }
 
       setShowModal(false);
       fetchHotels();
     } catch (err) {
       console.error('Failed to save hotel:', err);
-      alert('Failed to save hotel. Please try again.');
+      const errorMsg = err.response?.data?.error?.message || 'Failed to save hotel. Please try again.';
+      toast.error(errorMsg);
     } finally {
       setSubmitting(false);
     }
@@ -470,7 +487,8 @@ const HotelsList = () => {
                             </button>
                             <button
                               onClick={() => handleDelete(hotel)}
-                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                              disabled={deleting}
+                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                               title="Delete"
                             >
                               <TrashIcon className="w-5 h-5" />
@@ -547,10 +565,11 @@ const HotelsList = () => {
 
             {/* Location */}
             <div className="grid grid-cols-2 gap-4">
-              <Input
+              <CitySelect
                 label="City"
                 value={formData.city}
-                onChange={(e) => handleFormChange('city', e.target.value)}
+                onChange={(value) => handleFormChange('city', value)}
+                placeholder="Select city..."
               />
               <Input
                 label="Country"

@@ -1,55 +1,41 @@
-const { Pool } = require('pg');
 const fs = require('fs');
 const path = require('path');
-require('dotenv').config();
+const { Pool } = require('pg');
+require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL
+  host: process.env.DATABASE_HOST,
+  port: process.env.DATABASE_PORT,
+  user: process.env.DATABASE_USER,
+  password: process.env.DATABASE_PASSWORD,
+  database: process.env.DATABASE_NAME,
 });
 
-async function runMigration() {
-  const migrationFile = process.argv[2];
-
-  if (!migrationFile) {
-    console.error('❌ Please provide a migration file name');
-    console.log('Usage: node runMigration.js <migration_file>');
-    process.exit(1);
-  }
-
-  const migrationPath = path.join(__dirname, '../../database/migrations', migrationFile);
-
-  if (!fs.existsSync(migrationPath)) {
-    console.error(`❌ Migration file not found: ${migrationPath}`);
-    process.exit(1);
-  }
+async function runMigration(migrationFile) {
+  const client = await pool.connect();
 
   try {
-    console.log(`\n🔄 Running migration: ${migrationFile}\n`);
-
+    const migrationPath = path.join(__dirname, '../../database/migrations', migrationFile);
     const sql = fs.readFileSync(migrationPath, 'utf8');
 
-    await pool.query(sql);
-
-    console.log('✅ Migration completed successfully!\n');
-
-    // Verify the changes
-    const result = await pool.query(`
-      SELECT column_name, data_type, character_maximum_length, numeric_precision, numeric_scale
-      FROM information_schema.columns
-      WHERE table_name = 'hotels'
-      ORDER BY ordinal_position;
-    `);
-
-    console.log('📋 Current hotels table structure:');
-    console.table(result.rows);
-
+    console.log(`Running migration: ${migrationFile}`);
+    await client.query(sql);
+    console.log(`Migration completed successfully: ${migrationFile}`);
   } catch (error) {
-    console.error('❌ Migration failed:', error.message);
-    console.error(error);
-    process.exit(1);
+    console.error(`Error running migration ${migrationFile}:`, error);
+    throw error;
   } finally {
+    client.release();
     await pool.end();
   }
 }
 
-runMigration();
+const migrationFile = process.argv[2];
+
+if (!migrationFile) {
+  console.error('Please provide a migration file name');
+  console.error('Usage: node runMigration.js <migration-file.sql>');
+  process.exit(1);
+}
+
+runMigration(migrationFile);

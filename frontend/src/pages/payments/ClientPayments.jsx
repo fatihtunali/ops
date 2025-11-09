@@ -4,6 +4,7 @@ import { Card, Button, Input, Badge, Loader, Modal } from '@components/common';
 import { clientPaymentsService } from '@services/clientPaymentsService';
 import { bookingsService } from '@services/bookingsService';
 import { formatCurrency, formatDate } from '@utils/formatters';
+import { useToast } from '@context/ToastContext';
 import {
   PlusIcon,
   MagnifyingGlassIcon,
@@ -13,6 +14,7 @@ import {
 } from '@heroicons/react/24/outline';
 
 const ClientPayments = () => {
+  const toast = useToast();
   const [payments, setPayments] = useState([]);
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -42,6 +44,7 @@ const ClientPayments = () => {
   });
   const [formErrors, setFormErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   // Summary stats
   const [summary, setSummary] = useState({
@@ -121,8 +124,10 @@ const ClientPayments = () => {
 
       if (editingPayment) {
         await clientPaymentsService.update(editingPayment.id, payload);
+        toast.success('Payment updated successfully');
       } else {
         await clientPaymentsService.create(payload);
+        toast.success('Payment created successfully');
       }
 
       await fetchPayments();
@@ -130,7 +135,7 @@ const ClientPayments = () => {
       resetForm();
     } catch (err) {
       console.error('Failed to save payment:', err);
-      alert(`Failed to ${editingPayment ? 'update' : 'create'} payment. Please try again.`);
+      toast.error(err.response?.data?.error?.message || `Failed to ${editingPayment ? 'update' : 'create'} payment. Please try again.`);
     } finally {
       setSubmitting(false);
     }
@@ -154,11 +159,15 @@ const ClientPayments = () => {
     if (!confirm('Are you sure you want to delete this payment?')) return;
 
     try {
+      setDeleting(true);
       await clientPaymentsService.delete(id);
       await fetchPayments();
+      toast.success('Payment deleted successfully');
     } catch (err) {
       console.error('Failed to delete payment:', err);
-      alert('Failed to delete payment. Please try again.');
+      toast.error(err.response?.data?.error?.message || 'Failed to delete payment. Please try again.');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -408,7 +417,8 @@ const ClientPayments = () => {
                               size="sm"
                               icon={TrashIcon}
                               onClick={() => handleDelete(payment.id)}
-                              className="text-red-600 hover:text-red-700"
+                              disabled={deleting}
+                              className="text-red-600 hover:text-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                               Delete
                             </Button>

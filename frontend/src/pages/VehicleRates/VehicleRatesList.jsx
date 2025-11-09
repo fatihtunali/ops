@@ -1,16 +1,19 @@
 import { useState, useEffect } from 'react';
+import { useToast } from '@context/ToastContext';
 import vehicleRatesService from '../../services/vehicleRatesService';
 import vehicleTypesService from '../../services/vehicleTypesService';
 import tourSuppliersService from '../../services/tourSuppliersService';
 import VehicleRateForm from './VehicleRateForm';
 
 const VehicleRatesList = () => {
+  const toast = useToast();
   const [rates, setRates] = useState([]);
   const [vehicleTypes, setVehicleTypes] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [cities, setCities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   // Filters
   const [filterCity, setFilterCity] = useState('');
@@ -95,12 +98,16 @@ const VehicleRatesList = () => {
       return;
     }
 
+    setDeleting(true);
     try {
       await vehicleRatesService.delete(id);
+      toast.success('Vehicle rate deleted successfully');
       loadRates();
     } catch (err) {
       console.error('Error deleting rate:', err);
-      alert('Failed to delete rate');
+      toast.error(err.response?.data?.error?.message || 'Failed to delete rate');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -341,7 +348,8 @@ const VehicleRatesList = () => {
                       </button>
                       <button
                         onClick={() => handleDelete(rate.id)}
-                        className="text-red-600 hover:text-red-900"
+                        disabled={deleting}
+                        className="text-red-600 hover:text-red-900 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         Delete
                       </button>

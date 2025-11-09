@@ -70,6 +70,20 @@ export const tourSuppliersService = {
       throw error;
     }
   },
+
+  /**
+   * Get distinct cities from tour suppliers
+   * GET /api/tour-suppliers/cities
+   */
+  async getCities() {
+    try {
+      const response = await api.get('/tour-suppliers/cities');
+      return response;
+    } catch (error) {
+      console.error('Failed to fetch tour supplier cities:', error);
+      throw error;
+    }
+  },
 };
 
 export default tourSuppliersService;

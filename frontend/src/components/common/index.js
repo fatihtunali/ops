@@ -10,3 +10,4 @@ export { default as Modal } from './Modal';
 export { default as Loader } from './Loader';
 export { default as Badge } from './Badge';
 export { default as ProtectedRoute } from './ProtectedRoute';
+export { default as CitySelect } from './CitySelect';

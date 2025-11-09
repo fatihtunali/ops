@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import vehicleRatesService from '../../services/vehicleRatesService';
+import { CitySelect } from '@components/common';
 
 const VehicleRateForm = ({ rate, vehicleTypes, suppliers, onSave, onCancel }) => {
   const [formData, setFormData] = useState({
@@ -66,6 +67,21 @@ const VehicleRateForm = ({ rate, vehicleTypes, suppliers, onSave, onCancel }) =>
       setErrors(prev => ({
         ...prev,
         [name]: null
+      }));
+    }
+  };
+
+  const handleCityChange = (value) => {
+    setFormData(prev => ({
+      ...prev,
+      city: value
+    }));
+
+    // Clear error for city field
+    if (errors.city) {
+      setErrors(prev => ({
+        ...prev,
+        city: null
       }));
     }
   };
@@ -177,22 +193,14 @@ const VehicleRateForm = ({ rate, vehicleTypes, suppliers, onSave, onCancel }) =>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* City */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                City <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                name="city"
+              <CitySelect
+                label="City"
                 value={formData.city}
-                onChange={handleChange}
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                  errors.city ? 'border-red-500' : 'border-gray-300'
-                }`}
-                placeholder="e.g., Antalya, Bodrum, Istanbul"
+                onChange={handleCityChange}
+                error={errors.city}
+                required
+                placeholder="Select city..."
               />
-              {errors.city && (
-                <p className="mt-1 text-sm text-red-500">{errors.city}</p>
-              )}
             </div>
 
             {/* Supplier */}

@@ -14,7 +14,7 @@ exports.getAllVehicles = async (req, res) => {
       SELECT id, vehicle_number, type, capacity, daily_rate,
              driver_name, driver_phone, status, notes, created_at
       FROM vehicles
-      WHERE status != 'inactive'
+      WHERE 1=1
     `;
     const params = [];
     let paramCount = 1;
@@ -112,7 +112,7 @@ exports.getVehicleById = async (req, res) => {
       `SELECT id, vehicle_number, type, capacity, daily_rate,
               driver_name, driver_phone, status, notes, created_at
        FROM vehicles
-       WHERE id = $1 AND status != 'inactive'`,
+       WHERE id = $1`,
       [id]
     );
 
@@ -286,8 +286,8 @@ exports.updateVehicle = async (req, res) => {
 
     // Check if vehicle exists
     const existingVehicle = await query(
-      'SELECT id FROM vehicles WHERE id = $1 AND status != $2',
-      [id, 'inactive']
+      'SELECT id FROM vehicles WHERE id = $1',
+      [id]
     );
 
     if (existingVehicle.rows.length === 0) {
@@ -420,7 +420,7 @@ exports.updateVehicle = async (req, res) => {
 };
 
 /**
- * Delete vehicle (soft delete - set status to inactive)
+ * Delete vehicle (hard delete - permanently remove from database)
  * DELETE /api/vehicles/:id
  */
 exports.deleteVehicle = async (req, res) => {
@@ -429,7 +429,7 @@ exports.deleteVehicle = async (req, res) => {
 
     // Check if vehicle exists
     const existingVehicle = await query(
-      'SELECT id, status FROM vehicles WHERE id = $1',
+      'SELECT id FROM vehicles WHERE id = $1',
       [id]
     );
 
@@ -443,20 +443,27 @@ exports.deleteVehicle = async (req, res) => {
       });
     }
 
-    if (existingVehicle.rows[0].status === 'inactive') {
+    // Check if vehicle is used in any transfers
+    const transferCheck = await query(
+      'SELECT COUNT(*) FROM booking_transfers WHERE vehicle_id = $1',
+      [id]
+    );
+
+    const transferCount = parseInt(transferCheck.rows[0].count);
+    if (transferCount > 0) {
       return res.status(400).json({
         success: false,
         error: {
-          code: 'ALREADY_DELETED',
-          message: 'Vehicle already deleted'
+          code: 'REFERENTIAL_INTEGRITY_ERROR',
+          message: 'Cannot delete vehicle that is being used in transfers. Please delete the related records first.'
         }
       });
     }
 
-    // Soft delete - set status to inactive
+    // Hard delete - permanently remove from database
     await query(
-      'UPDATE vehicles SET status = $1 WHERE id = $2',
-      ['inactive', id]
+      'DELETE FROM vehicles WHERE id = $1',
+      [id]
     );
 
     res.json({

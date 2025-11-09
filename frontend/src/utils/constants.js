@@ -192,16 +192,12 @@ export const VEHICLE_TYPES = [
   'Luxury Car',
 ];
 
-// Room Types
+// Room Types - Standardized codes matching hotel seasonal rates
 export const ROOM_TYPES = [
-  'Single',
-  'Double',
-  'Twin',
-  'Triple',
-  'Family Room',
-  'Suite',
-  'Deluxe Room',
-  'Presidential Suite',
+  { value: 'SGL', label: 'Single Room', description: 'Single occupancy' },
+  { value: 'DBL', label: 'Double Room', description: 'Double occupancy' },
+  { value: 'TRP', label: 'Triple Room', description: 'Triple occupancy' },
+  { value: 'SUITE', label: 'Suite / Special', description: 'Suite or luxury room' },
 ];
 
 // Languages

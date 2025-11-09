@@ -13,7 +13,8 @@ import {
   BanknotesIcon,
   ChartBarIcon,
   DocumentTextIcon,
-  Cog6ToothIcon
+  Cog6ToothIcon,
+  TicketIcon
 } from '@heroicons/react/24/outline';
 import { useAuth } from '@context/AuthContext';
 import { APP_NAME } from '@utils/constants';
@@ -64,6 +65,12 @@ const Sidebar = ({ isOpen, onClose }) => {
       name: 'Vehicles',
       href: '/vehicles',
       icon: TruckIcon,
+      roles: ['admin', 'staff'],
+    },
+    {
+      name: 'Entrance Fees',
+      href: '/entrance-fees',
+      icon: TicketIcon,
       roles: ['admin', 'staff'],
     },
     {

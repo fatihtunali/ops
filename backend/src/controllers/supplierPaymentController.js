@@ -507,7 +507,7 @@ exports.update = async (req, res) => {
 };
 
 /**
- * Delete supplier payment
+ * Delete supplier payment (hard delete - permanently remove from database)
  * DELETE /api/supplier-payments/:id
  */
 exports.deletePayment = async (req, res) => {
@@ -530,21 +530,15 @@ exports.deletePayment = async (req, res) => {
       });
     }
 
-    // Hard delete - permanently remove the record
-    const result = await query(
-      'DELETE FROM supplier_payments WHERE id = $1 RETURNING *',
+    // Hard delete - permanently remove from database
+    await query(
+      'DELETE FROM supplier_payments WHERE id = $1',
       [id]
     );
 
-    const supplierPayment = {
-      ...result.rows[0],
-      created_at: formatDateTime(result.rows[0].created_at)
-    };
-
     res.json({
       success: true,
-      message: 'Supplier payment deleted successfully',
-      data: supplierPayment
+      message: 'Supplier payment deleted successfully'
     });
   } catch (error) {
     console.error('Delete supplier payment error:', error);

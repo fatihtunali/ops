@@ -7,7 +7,7 @@ import { bookingServicesService } from '@services/bookingServicesService';
 import { passengersService } from '@services/passengersService';
 import { reportsService } from '@services/reportsService';
 import { formatDate, formatCurrency, formatDateTime } from '@utils/formatters';
-import { BOOKING_STATUS_COLORS } from '@utils/constants';
+import { BOOKING_STATUS_COLORS, ROOM_TYPES } from '@utils/constants';
 import {
   PencilIcon,
   ArrowLeftIcon,
@@ -359,7 +359,9 @@ const BookingDetails = () => {
                         <div className="flex justify-between items-start mb-3">
                           <div>
                             <h3 className="font-medium text-slate-900">{hotel.hotel_name}</h3>
-                            <p className="text-sm text-slate-600">{hotel.room_type}</p>
+                            <p className="text-sm text-slate-600">
+                              {ROOM_TYPES.find((rt) => rt.value === hotel.room_type)?.label || hotel.room_type || 'N/A'}
+                            </p>
                           </div>
                           <div className="text-right">
                             <p className="text-sm font-medium text-slate-900">

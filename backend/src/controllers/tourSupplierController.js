@@ -7,7 +7,7 @@ const { formatDateTime } = require('../utils/formatters');
  */
 exports.getAllTourSuppliers = async (req, res) => {
   try {
-    const { status, search, page = 1, limit = 10 } = req.query;
+    const { status, search, city, page = 1, limit = 10 } = req.query;
 
     let sqlQuery = `
       SELECT * FROM tour_suppliers
@@ -20,6 +20,13 @@ exports.getAllTourSuppliers = async (req, res) => {
     if (status) {
       sqlQuery += ` AND status = $${paramIndex}`;
       params.push(status);
+      paramIndex++;
+    }
+
+    // Filter by city (service_areas)
+    if (city) {
+      sqlQuery += ` AND service_areas ILIKE $${paramIndex}`;
+      params.push(`%${city}%`);
       paramIndex++;
     }
 
@@ -135,6 +142,7 @@ exports.createTourSupplier = async (req, res) => {
       email,
       phone,
       services_offered,
+      service_areas,
       payment_terms,
       notes,
       status = 'active'
@@ -181,10 +189,10 @@ exports.createTourSupplier = async (req, res) => {
     // Insert new tour supplier
     const result = await query(
       `INSERT INTO tour_suppliers
-       (name, contact_person, email, phone, services_offered, payment_terms, notes, status)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       (name, contact_person, email, phone, services_offered, service_areas, payment_terms, notes, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        RETURNING *`,
-      [name, contact_person, email, phone, services_offered, payment_terms, notes, status]
+      [name, contact_person, email, phone, services_offered, service_areas, payment_terms, notes, status]
     );
 
     const supplier = result.rows[0];
@@ -220,6 +228,7 @@ exports.updateTourSupplier = async (req, res) => {
       email,
       phone,
       services_offered,
+      service_areas,
       payment_terms,
       notes,
       status
@@ -287,12 +296,13 @@ exports.updateTourSupplier = async (req, res) => {
            email = $3,
            phone = $4,
            services_offered = $5,
-           payment_terms = $6,
-           notes = $7,
-           status = $8
-       WHERE id = $9
+           service_areas = $6,
+           payment_terms = $7,
+           notes = $8,
+           status = $9
+       WHERE id = $10
        RETURNING *`,
-      [name, contact_person, email, phone, services_offered, payment_terms, notes, status, id]
+      [name, contact_person, email, phone, services_offered, service_areas, payment_terms, notes, status, id]
     );
 
     const supplier = result.rows[0];
@@ -316,7 +326,7 @@ exports.updateTourSupplier = async (req, res) => {
 };
 
 /**
- * Delete tour supplier (soft delete - set status to inactive)
+ * Delete tour supplier (hard delete - permanently remove from database)
  * DELETE /api/tour-suppliers/:id
  */
 exports.deleteTourSupplier = async (req, res) => {
@@ -339,15 +349,49 @@ exports.deleteTourSupplier = async (req, res) => {
       });
     }
 
-    // Soft delete - set status to inactive
+    // Check if supplier is used in vehicle rates
+    const vehicleRateCheck = await query(
+      'SELECT COUNT(*) FROM vehicle_rates WHERE supplier_id = $1',
+      [id]
+    );
+
+    const vehicleRateCount = parseInt(vehicleRateCheck.rows[0].count);
+    if (vehicleRateCount > 0) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'REFERENTIAL_INTEGRITY_ERROR',
+          message: 'Cannot delete supplier that is referenced in rates or bookings. Please delete the related records first.'
+        }
+      });
+    }
+
+    // Check if supplier is used in booking tours
+    const bookingTourCheck = await query(
+      'SELECT COUNT(*) FROM booking_tours WHERE supplier_id = $1',
+      [id]
+    );
+
+    const bookingTourCount = parseInt(bookingTourCheck.rows[0].count);
+    if (bookingTourCount > 0) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'REFERENTIAL_INTEGRITY_ERROR',
+          message: 'Cannot delete supplier that is referenced in rates or bookings. Please delete the related records first.'
+        }
+      });
+    }
+
+    // Hard delete - permanently remove from database
     await query(
-      'UPDATE tour_suppliers SET status = $1 WHERE id = $2',
-      ['inactive', id]
+      'DELETE FROM tour_suppliers WHERE id = $1',
+      [id]
     );
 
     res.json({
       success: true,
-      message: 'Tour supplier deleted successfully (status set to inactive)'
+      message: 'Tour supplier deleted successfully'
     });
   } catch (error) {
     console.error('Delete tour supplier error:', error);
@@ -393,6 +437,38 @@ exports.getTourSupplierStats = async (req, res) => {
       error: {
         code: 'INTERNAL_ERROR',
         message: 'Failed to fetch tour supplier statistics'
+      }
+    });
+  }
+};
+
+/**
+ * Get distinct cities from tour suppliers service_areas
+ * GET /api/tour-suppliers/cities
+ */
+exports.getTourSupplierCities = async (req, res) => {
+  try {
+    const result = await query(`
+      SELECT DISTINCT service_areas as city
+      FROM tour_suppliers
+      WHERE service_areas IS NOT NULL AND service_areas != ''
+      ORDER BY service_areas
+    `);
+
+    const cities = result.rows.map(row => row.city);
+
+    res.json({
+      success: true,
+      count: cities.length,
+      data: cities
+    });
+  } catch (error) {
+    console.error('Get tour supplier cities error:', error);
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'Failed to fetch tour supplier cities'
       }
     });
   }

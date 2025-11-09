@@ -63,7 +63,10 @@ app.get('/api', (req, res) => {
       reports: '/api/reports',
       vouchers: '/api/vouchers',
       vehicleTypes: '/api/vehicle-types',
-      vehicleRates: '/api/vehicle-rates'
+      vehicleRates: '/api/vehicle-rates',
+      tourRates: '/api/tour-rates',
+      guideRates: '/api/guide-rates',
+      entranceFees: '/api/entrance-fees'
     }
   });
 });
@@ -89,6 +92,10 @@ const userRoutes = require('./src/routes/users');
 const reportRoutes = require('./src/routes/reports');
 const vehicleTypeRoutes = require('./src/routes/vehicleTypes');
 const vehicleRateRoutes = require('./src/routes/vehicleRates');
+const tourRateRoutes = require('./src/routes/tourRates');
+const guideRateRoutes = require('./src/routes/guideRates');
+const cityRoutes = require('./src/routes/cities');
+const entranceFeeRoutes = require('./src/routes/entranceFees');
 
 // Use routes
 app.use('/api/client-payments', clientPaymentRoutes);
@@ -111,6 +118,10 @@ app.use('/api/users', userRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/vehicle-types', vehicleTypeRoutes);
 app.use('/api/vehicle-rates', vehicleRateRoutes);
+app.use('/api/tour-rates', tourRateRoutes);
+app.use('/api/guide-rates', guideRateRoutes);
+app.use('/api/cities', cityRoutes);
+app.use('/api/entrance-fees', entranceFeeRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

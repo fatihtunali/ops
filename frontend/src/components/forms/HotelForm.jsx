@@ -2,6 +2,7 @@ import { useState, useEffect } from 'prop-types';
 import PropTypes from 'prop-types';
 import { Input, Button } from '@components/common';
 import { formatCurrency } from '@utils/formatters';
+import { ROOM_TYPES } from '@utils/constants';
 import { XMarkIcon, CheckIcon } from '@heroicons/react/24/outline';
 
 const HotelForm = ({
@@ -96,6 +97,9 @@ const HotelForm = ({
     if (!formData.hotel_id) {
       newErrors.hotel_id = 'Please select a hotel';
     }
+    if (!formData.room_type) {
+      newErrors.room_type = 'Please select a room type';
+    }
     if (!formData.check_in) {
       newErrors.check_in = 'Check-in date is required';
     }
@@ -155,13 +159,24 @@ const HotelForm = ({
           </div>
 
           <div>
-            <Input
-              type="text"
-              label="Room Type"
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Room Type <span className="text-red-500">*</span>
+            </label>
+            <select
               value={formData.room_type}
               onChange={(e) => handleChange('room_type', e.target.value)}
-              placeholder="e.g., Standard Double, Suite"
-            />
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="">Select Room Type</option>
+              {ROOM_TYPES.map((type) => (
+                <option key={type.value} value={type.value}>
+                  {type.label}
+                </option>
+              ))}
+            </select>
+            {errors.room_type && (
+              <p className="text-red-500 text-sm mt-1">{errors.room_type}</p>
+            )}
           </div>
         </div>
 

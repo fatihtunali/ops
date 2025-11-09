@@ -1,26 +1,24 @@
 import { useState, useEffect } from 'react';
 import MainLayout from '@components/layout/MainLayout';
-import { Card, Button, Input, Badge, Loader, Modal } from '@components/common';
-import { clientsService } from '@services/clientsService';
-import { useToast } from '@context/ToastContext';
+import { Card, Button, Input, Badge, Loader, Modal, CitySelect } from '@components/common';
+import { tourSuppliersService } from '@services/tourSuppliersService';
 import {
   PlusIcon,
   MagnifyingGlassIcon,
   PencilIcon,
   TrashIcon,
-  UserGroupIcon,
+  TruckIcon,
 } from '@heroicons/react/24/outline';
+import { useToast } from '@context/ToastContext';
 
-const ClientsList = () => {
+const TourSuppliersList = () => {
   const toast = useToast();
-  const [clients, setClients] = useState([]);
+  const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [deleting, setDeleting] = useState(false);
 
   // Filters
   const [searchTerm, setSearchTerm] = useState('');
-  const [typeFilter, setTypeFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
 
   // Pagination
@@ -31,27 +29,27 @@ const ClientsList = () => {
 
   // Modal state
   const [showModal, setShowModal] = useState(false);
-  const [editingClient, setEditingClient] = useState(null);
+  const [editingSupplier, setEditingSupplier] = useState(null);
+  const [selectedCities, setSelectedCities] = useState([]);
   const [formData, setFormData] = useState({
-    client_code: '',
     name: '',
-    type: 'direct',
+    contact_person: '',
     email: '',
     phone: '',
-    address: '',
-    commission_rate: '',
+    payment_terms: '',
     notes: '',
     status: 'active',
   });
   const [formErrors, setFormErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
-  // Fetch clients
+  // Fetch suppliers
   useEffect(() => {
-    fetchClients();
-  }, [currentPage, typeFilter, statusFilter]);
+    fetchSuppliers();
+  }, [currentPage, statusFilter]);
 
-  const fetchClients = async () => {
+  const fetchSuppliers = async () => {
     try {
       setLoading(true);
       const params = {
@@ -59,23 +57,33 @@ const ClientsList = () => {
         limit: itemsPerPage,
       };
 
-      if (typeFilter) params.type = typeFilter;
       if (statusFilter) params.status = statusFilter;
       if (searchTerm) params.search = searchTerm;
 
-      const response = await clientsService.getAll(params);
+      const response = await tourSuppliersService.getAll(params);
       const data = response?.data || response;
 
-      if (data && Array.isArray(data.clients || data)) {
-        setClients(data.clients || data);
-        setTotalCount(data.total || data.length);
-        setTotalPages(Math.ceil((data.total || data.length) / itemsPerPage));
+      if (data && Array.isArray(data.tour_suppliers || data)) {
+        const allSuppliers = data.tour_suppliers || data;
+
+        // Filter OUT vehicle suppliers (those with Daily Rental or Transfers)
+        // Only show actual tour suppliers
+        const tourOnlySuppliers = allSuppliers.filter(s => {
+          if (!s.services_offered) return true; // Include if no services specified
+          const services = s.services_offered.toLowerCase();
+          // Exclude if it's a vehicle supplier
+          return !(services.includes('daily rental') || services.includes('transfers'));
+        });
+
+        setSuppliers(tourOnlySuppliers);
+        setTotalCount(tourOnlySuppliers.length);
+        setTotalPages(Math.ceil(tourOnlySuppliers.length / itemsPerPage));
       }
 
       setError(null);
     } catch (err) {
-      console.error('Failed to fetch clients:', err);
-      setError('Failed to load clients. Please try again.');
+      console.error('Failed to fetch tour suppliers:', err);
+      setError('Failed to load tour suppliers. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -84,19 +92,18 @@ const ClientsList = () => {
   const handleSearch = (e) => {
     e.preventDefault();
     setCurrentPage(1);
-    fetchClients();
+    fetchSuppliers();
   };
 
   const handleAdd = () => {
-    setEditingClient(null);
+    setEditingSupplier(null);
+    setSelectedCities([]);
     setFormData({
-      client_code: '',
       name: '',
-      type: 'direct',
+      contact_person: '',
       email: '',
       phone: '',
-      address: '',
-      commission_rate: '',
+      payment_terms: '',
       notes: '',
       status: 'active',
     });
@@ -104,37 +111,39 @@ const ClientsList = () => {
     setShowModal(true);
   };
 
-  const handleEdit = (client) => {
-    setEditingClient(client);
+  const handleEdit = (supplier) => {
+    setEditingSupplier(supplier);
+
+    // Parse service_areas string to array
+    const cities = supplier.service_areas ? supplier.service_areas.split(',').map(c => c.trim()) : [];
+    setSelectedCities(cities);
+
     setFormData({
-      client_code: client.client_code || '',
-      name: client.name || '',
-      type: client.type || 'direct',
-      email: client.email || '',
-      phone: client.phone || '',
-      address: client.address || '',
-      commission_rate: client.commission_rate || '',
-      notes: client.notes || '',
-      status: client.status || 'active',
+      name: supplier.name || '',
+      contact_person: supplier.contact_person || '',
+      email: supplier.email || '',
+      phone: supplier.phone || '',
+      payment_terms: supplier.payment_terms || '',
+      notes: supplier.notes || '',
+      status: supplier.status || 'active',
     });
     setFormErrors({});
     setShowModal(true);
   };
 
-  const handleDelete = async (client) => {
-    if (!window.confirm(`Are you sure you want to delete "${client.name}"?`)) {
+  const handleDelete = async (supplier) => {
+    if (!window.confirm(`Are you sure you want to delete "${supplier.name}"?`)) {
       return;
     }
 
     setDeleting(true);
     try {
-      await clientsService.delete(client.id);
-      toast.success('Client deleted successfully');
-      fetchClients();
+      await tourSuppliersService.delete(supplier.id);
+      toast.success('Tour supplier deleted successfully');
+      fetchSuppliers();
     } catch (err) {
-      console.error('Failed to delete client:', err);
-      const errorMsg = err.response?.data?.error?.message || 'Failed to delete client. Please try again.';
-      toast.error(errorMsg);
+      console.error('Failed to delete tour supplier:', err);
+      toast.error(err.response?.data?.error?.message || 'Failed to delete tour supplier. Please try again.');
     } finally {
       setDeleting(false);
     }
@@ -144,18 +153,11 @@ const ClientsList = () => {
     const errors = {};
 
     if (!formData.name?.trim()) {
-      errors.name = 'Client name is required';
+      errors.name = 'Supplier name is required';
     }
 
     if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       errors.email = 'Invalid email format';
-    }
-
-    if (formData.commission_rate) {
-      const rate = parseFloat(formData.commission_rate);
-      if (isNaN(rate) || rate < 0 || rate > 100) {
-        errors.commission_rate = 'Commission rate must be between 0 and 100';
-      }
     }
 
     setFormErrors(errors);
@@ -172,25 +174,25 @@ const ClientsList = () => {
     setSubmitting(true);
 
     try {
-      const submitData = {
+      // Convert selectedCities array to comma-separated string
+      const dataToSave = {
         ...formData,
-        commission_rate: formData.commission_rate ? parseFloat(formData.commission_rate) : null,
+        service_areas: selectedCities.join(', ')
       };
 
-      if (editingClient) {
-        await clientsService.update(editingClient.id, submitData);
-        toast.success('Client updated successfully');
+      if (editingSupplier) {
+        await tourSuppliersService.update(editingSupplier.id, dataToSave);
+        toast.success('Tour supplier updated successfully');
       } else {
-        await clientsService.create(submitData);
-        toast.success('Client created successfully');
+        await tourSuppliersService.create(dataToSave);
+        toast.success('Tour supplier created successfully');
       }
 
       setShowModal(false);
-      fetchClients();
+      fetchSuppliers();
     } catch (err) {
-      console.error('Failed to save client:', err);
-      const errorMsg = err.response?.data?.error?.message || 'Failed to save client. Please try again.';
-      toast.error(errorMsg);
+      console.error('Failed to save tour supplier:', err);
+      toast.error(err.response?.data?.error?.message || 'Failed to save tour supplier. Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -214,11 +216,11 @@ const ClientsList = () => {
         {/* Header */}
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Clients Management</h1>
-            <p className="text-gray-600 mt-1">Manage clients and travel agents</p>
+            <h1 className="text-2xl font-bold text-gray-900">Tour Suppliers Management</h1>
+            <p className="text-gray-600 mt-1">Manage tour suppliers and service providers</p>
           </div>
           <Button icon={PlusIcon} onClick={handleAdd}>
-            Add Client
+            Add Supplier
           </Button>
         </div>
 
@@ -228,28 +230,13 @@ const ClientsList = () => {
             <div className="flex-1">
               <Input
                 label="Search"
-                placeholder="Search by name, email, phone..."
+                placeholder="Search by name, contact person..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 icon={MagnifyingGlassIcon}
               />
             </div>
-            <div className="w-40">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
-              <select
-                value={typeFilter}
-                onChange={(e) => {
-                  setTypeFilter(e.target.value);
-                  setCurrentPage(1);
-                }}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="">All Types</option>
-                <option value="direct">Direct</option>
-                <option value="agent">Agent</option>
-              </select>
-            </div>
-            <div className="w-40">
+            <div className="w-48">
               <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
               <select
                 value={statusFilter}
@@ -275,19 +262,19 @@ const ClientsList = () => {
           </Card>
         )}
 
-        {/* Clients List */}
+        {/* Suppliers List */}
         <Card>
           {loading ? (
             <div className="flex justify-center py-12">
               <Loader size="lg" />
             </div>
-          ) : clients.length === 0 ? (
+          ) : suppliers.length === 0 ? (
             <div className="text-center py-12">
-              <UserGroupIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No clients found</h3>
-              <p className="text-gray-600 mb-4">Get started by adding your first client.</p>
+              <TruckIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No suppliers found</h3>
+              <p className="text-gray-600 mb-4">Get started by adding your first tour supplier.</p>
               <Button icon={PlusIcon} onClick={handleAdd}>
-                Add Client
+                Add Supplier
               </Button>
             </div>
           ) : (
@@ -296,62 +283,51 @@ const ClientsList = () => {
                 <table className="w-full">
                   <thead className="bg-gray-50 border-b border-gray-200">
                     <tr>
-                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Code</th>
-                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Name</th>
-                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Type</th>
+                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Supplier Name</th>
                       <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Contact</th>
-                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Commission</th>
+                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Payment Terms</th>
                       <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Status</th>
                       <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
-                    {clients.map((client) => (
-                      <tr key={client.id} className="hover:bg-gray-50">
+                    {suppliers.map((supplier) => (
+                      <tr key={supplier.id} className="hover:bg-gray-50">
                         <td className="py-3 px-4">
-                          <div className="text-sm font-mono text-gray-600">{client.client_code || '-'}</div>
-                        </td>
-                        <td className="py-3 px-4">
-                          <div className="font-medium text-gray-900">{client.name}</div>
-                        </td>
-                        <td className="py-3 px-4">
-                          <Badge variant={client.type === 'agent' ? 'primary' : 'secondary'}>
-                            {client.type || 'direct'}
-                          </Badge>
+                          <div className="font-medium text-gray-900">{supplier.name}</div>
                         </td>
                         <td className="py-3 px-4">
                           <div className="text-sm">
-                            {client.email && <div className="text-gray-900">{client.email}</div>}
-                            {client.phone && <div className="text-gray-600">{client.phone}</div>}
-                            {!client.email && !client.phone && <span className="text-gray-400">-</span>}
+                            {supplier.contact_person && <div className="text-gray-900">{supplier.contact_person}</div>}
+                            {supplier.phone && <div className="text-gray-600">{supplier.phone}</div>}
+                            {supplier.email && <div className="text-gray-600">{supplier.email}</div>}
+                            {!supplier.contact_person && !supplier.phone && !supplier.email && <span className="text-gray-400">-</span>}
                           </div>
                         </td>
                         <td className="py-3 px-4">
-                          <div className="text-sm text-gray-900">
-                            {client.type === 'agent' && client.commission_rate
-                              ? `${client.commission_rate}%`
-                              : '-'}
+                          <div className="text-sm text-gray-900 max-w-xs truncate">
+                            {supplier.payment_terms || '-'}
                           </div>
                         </td>
                         <td className="py-3 px-4">
-                          <Badge variant={client.status === 'active' ? 'success' : 'secondary'}>
-                            {client.status || 'active'}
+                          <Badge variant={supplier.status === 'active' ? 'success' : 'secondary'}>
+                            {supplier.status || 'active'}
                           </Badge>
                         </td>
                         <td className="py-3 px-4">
                           <div className="flex justify-end gap-2">
                             <button
-                              onClick={() => handleEdit(client)}
+                              onClick={() => handleEdit(supplier)}
                               className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                               title="Edit"
                             >
                               <PencilIcon className="w-5 h-5" />
                             </button>
                             <button
-                              onClick={() => handleDelete(client)}
-                              disabled={deleting}
+                              onClick={() => handleDelete(supplier)}
                               className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                               title="Delete"
+                              disabled={deleting}
                             >
                               <TrashIcon className="w-5 h-5" />
                             </button>
@@ -367,7 +343,7 @@ const ClientsList = () => {
               {totalPages > 1 && (
                 <div className="flex justify-between items-center mt-4 pt-4 border-t border-gray-200">
                   <div className="text-sm text-gray-600">
-                    Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalCount)} of {totalCount} clients
+                    Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalCount)} of {totalCount} suppliers
                   </div>
                   <div className="flex gap-2">
                     <Button
@@ -413,43 +389,27 @@ const ClientsList = () => {
         <Modal
           isOpen={showModal}
           onClose={() => setShowModal(false)}
-          title={editingClient ? 'Edit Client' : 'Add New Client'}
+          title={editingSupplier ? 'Edit Tour Supplier' : 'Add New Tour Supplier'}
         >
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Client Code */}
+            {/* Supplier Name */}
             <Input
-              label="Client Code"
-              value={formData.client_code}
-              onChange={(e) => handleFormChange('client_code', e.target.value)}
-              placeholder="Auto-generated if left empty"
-            />
-
-            {/* Client Name */}
-            <Input
-              label="Client Name *"
+              label="Supplier Name *"
               value={formData.name}
               onChange={(e) => handleFormChange('name', e.target.value)}
               error={formErrors.name}
               required
             />
 
-            {/* Client Type */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Client Type *</label>
-              <select
-                value={formData.type}
-                onChange={(e) => handleFormChange('type', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="direct">Direct Client</option>
-                <option value="agent">Travel Agent</option>
-              </select>
-            </div>
-
             {/* Contact Information */}
             <div className="border-t pt-4">
               <h3 className="text-sm font-medium text-gray-700 mb-3">Contact Information</h3>
               <div className="space-y-3">
+                <Input
+                  label="Contact Person"
+                  value={formData.contact_person}
+                  onChange={(e) => handleFormChange('contact_person', e.target.value)}
+                />
                 <Input
                   label="Email"
                   type="email"
@@ -462,34 +422,31 @@ const ClientsList = () => {
                   value={formData.phone}
                   onChange={(e) => handleFormChange('phone', e.target.value)}
                 />
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
-                  <textarea
-                    value={formData.address}
-                    onChange={(e) => handleFormChange('address', e.target.value)}
-                    rows={2}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Full address..."
-                  />
-                </div>
               </div>
             </div>
 
-            {/* Commission Rate (for agents only) */}
-            {formData.type === 'agent' && (
-              <div className="border-t pt-4">
-                <Input
-                  label="Commission Rate (%)"
-                  type="number"
-                  step="0.01"
-                  value={formData.commission_rate}
-                  onChange={(e) => handleFormChange('commission_rate', e.target.value)}
-                  error={formErrors.commission_rate}
-                  placeholder="e.g., 15.00"
-                />
-                <p className="text-xs text-gray-500 mt-1">Percentage of total booking value</p>
-              </div>
-            )}
+            {/* Service Areas */}
+            <div className="border-t pt-4">
+              <CitySelect
+                label="Service Areas (Cities)"
+                value={selectedCities}
+                onChange={setSelectedCities}
+                multiple
+                placeholder="Select cities where this supplier operates..."
+              />
+            </div>
+
+            {/* Payment Terms */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Payment Terms</label>
+              <textarea
+                value={formData.payment_terms}
+                onChange={(e) => handleFormChange('payment_terms', e.target.value)}
+                rows={2}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="e.g., Net 30, 50% advance, payment on delivery..."
+              />
+            </div>
 
             {/* Status */}
             <div>
@@ -527,7 +484,7 @@ const ClientsList = () => {
                 Cancel
               </Button>
               <Button type="submit" disabled={submitting}>
-                {submitting ? 'Saving...' : editingClient ? 'Update Client' : 'Add Client'}
+                {submitting ? 'Saving...' : editingSupplier ? 'Update Supplier' : 'Add Supplier'}
               </Button>
             </div>
           </form>
@@ -537,4 +494,4 @@ const ClientsList = () => {
   );
 };
 
-export default ClientsList;
+export default TourSuppliersList;

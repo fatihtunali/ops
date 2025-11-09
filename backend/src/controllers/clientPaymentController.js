@@ -560,7 +560,7 @@ exports.update = async (req, res) => {
 };
 
 /**
- * Delete client payment
+ * Delete client payment (hard delete - permanently remove from database)
  * DELETE /api/client-payments/:id
  */
 exports.deletePayment = async (req, res) => {
@@ -569,7 +569,7 @@ exports.deletePayment = async (req, res) => {
 
     // Check if payment exists
     const existingPayment = await query(
-      'SELECT id, booking_id FROM client_payments WHERE id = $1',
+      'SELECT id FROM client_payments WHERE id = $1',
       [id]
     );
 
@@ -583,7 +583,7 @@ exports.deletePayment = async (req, res) => {
       });
     }
 
-    // Delete the payment
+    // Hard delete - permanently remove from database
     await query(
       'DELETE FROM client_payments WHERE id = $1',
       [id]

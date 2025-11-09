@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from '@context/AuthContext';
+import { ToastProvider } from '@context/ToastContext';
 import ProtectedRoute from '@components/common/ProtectedRoute';
 import Login from '@pages/auth/Login';
 import Dashboard from '@pages/Dashboard';
@@ -11,6 +12,7 @@ import HotelsList from '@pages/hotels/HotelsList';
 import TourSuppliersList from '@pages/tours/TourSuppliersList';
 import GuidesList from '@pages/resources/GuidesList';
 import VehiclesList from '@pages/resources/VehiclesList';
+import EntranceFeesList from '@pages/resources/EntranceFeesList';
 import VehicleRatesList from '@pages/VehicleRates/VehicleRatesList';
 import ExpensesList from '@pages/expenses/ExpensesList';
 import UsersList from '@pages/users/UsersList';
@@ -22,8 +24,9 @@ import VoucherGenerator from '@pages/vouchers/VoucherGenerator';
 function App() {
   return (
     <Router>
-      <AuthProvider>
-        <Routes>
+      <ToastProvider>
+        <AuthProvider>
+          <Routes>
           {/* Public Routes */}
           <Route path="/login" element={<Login />} />
 
@@ -119,6 +122,14 @@ function App() {
             }
           />
           <Route
+            path="/entrance-fees"
+            element={
+              <ProtectedRoute>
+                <EntranceFeesList />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/vehicle-rates"
             element={
               <ProtectedRoute>
@@ -190,8 +201,9 @@ function App() {
 
           {/* Catch all - redirect to dashboard */}
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
-      </AuthProvider>
+          </Routes>
+        </AuthProvider>
+      </ToastProvider>
     </Router>
   );
 }

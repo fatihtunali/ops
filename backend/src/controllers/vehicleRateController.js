@@ -502,8 +502,12 @@ exports.deleteVehicleRate = async (req, res) => {
       });
     }
 
-    // Soft delete (set is_active = false)
-    await query('UPDATE vehicle_rates SET is_active = false WHERE id = $1', [id]);
+    // Note: Vehicle rates don't have foreign key constraints in bookings
+    // Bookings store their own pricing at the time of booking
+    // So we can safely delete rates without checking bookings
+
+    // Hard delete - permanently remove from database
+    await query('DELETE FROM vehicle_rates WHERE id = $1', [id]);
 
     res.json({
       success: true,

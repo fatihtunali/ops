@@ -14,6 +14,7 @@ exports.createGuide = async (req, res) => {
       daily_rate,
       specialization,
       availability_status = 'available',
+      service_areas,
       notes
     } = req.body;
 
@@ -42,10 +43,10 @@ exports.createGuide = async (req, res) => {
 
     // Insert guide
     const result = await query(
-      `INSERT INTO guides (name, phone, languages, daily_rate, specialization, availability_status, notes)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+      `INSERT INTO guides (name, phone, languages, daily_rate, specialization, availability_status, service_areas, notes)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING *`,
-      [name, phone, languages, daily_rate, specialization, availability_status, notes]
+      [name, phone, languages, daily_rate, specialization, availability_status, service_areas, notes]
     );
 
     const guide = result.rows[0];
@@ -100,10 +101,16 @@ exports.getAllGuides = async (req, res) => {
 
     const result = await query(queryText, params);
 
-    // Format dates for all guides
+    // Format dates and service_areas for all guides
     const guides = result.rows.map(guide => ({
       ...guide,
-      created_at: formatDateTime(guide.created_at)
+      created_at: formatDateTime(guide.created_at),
+      // Convert PostgreSQL array to comma-separated string
+      service_areas: guide.service_areas ?
+        (Array.isArray(guide.service_areas) ?
+          guide.service_areas.join(', ') :
+          guide.service_areas.replace(/[{}"]/g, '').split(',').map(s => s.trim()).join(', ')) :
+        null
     }));
 
     res.json({
@@ -135,10 +142,16 @@ exports.getAvailableGuides = async (req, res) => {
        ORDER BY name ASC`
     );
 
-    // Format dates for all guides
+    // Format dates and service_areas for all guides
     const guides = result.rows.map(guide => ({
       ...guide,
-      created_at: formatDateTime(guide.created_at)
+      created_at: formatDateTime(guide.created_at),
+      // Convert PostgreSQL array to comma-separated string
+      service_areas: guide.service_areas ?
+        (Array.isArray(guide.service_areas) ?
+          guide.service_areas.join(', ') :
+          guide.service_areas.replace(/[{}"]/g, '').split(',').map(s => s.trim()).join(', ')) :
+        null
     }));
 
     res.json({
@@ -183,8 +196,13 @@ exports.getGuideById = async (req, res) => {
 
     const guide = result.rows[0];
 
-    // Format dates
+    // Format dates and service_areas
     guide.created_at = formatDateTime(guide.created_at);
+    guide.service_areas = guide.service_areas ?
+      (Array.isArray(guide.service_areas) ?
+        guide.service_areas.join(', ') :
+        guide.service_areas.replace(/[{}"]/g, '').split(',').map(s => s.trim()).join(', ')) :
+      null;
 
     res.json({
       success: true,
@@ -216,6 +234,7 @@ exports.updateGuide = async (req, res) => {
       daily_rate,
       specialization,
       availability_status,
+      service_areas,
       notes
     } = req.body;
 
@@ -284,6 +303,11 @@ exports.updateGuide = async (req, res) => {
       params.push(availability_status);
       paramCount++;
     }
+    if (service_areas !== undefined) {
+      updates.push(`service_areas = $${paramCount}`);
+      params.push(service_areas);
+      paramCount++;
+    }
     if (notes !== undefined) {
       updates.push(`notes = $${paramCount}`);
       params.push(notes);
@@ -331,7 +355,7 @@ exports.updateGuide = async (req, res) => {
 };
 
 /**
- * Soft delete guide (set availability_status to inactive)
+ * Delete guide (hard delete - permanently remove from database)
  * DELETE /api/guides/:id
  */
 exports.deleteGuide = async (req, res) => {
@@ -354,21 +378,32 @@ exports.deleteGuide = async (req, res) => {
       });
     }
 
-    // Soft delete - set availability_status to 'inactive'
-    const result = await query(
-      `UPDATE guides SET availability_status = 'inactive' WHERE id = $1 RETURNING *`,
+    // Check if guide is assigned to any tours
+    const tourCheck = await query(
+      'SELECT COUNT(*) FROM booking_tours WHERE guide_id = $1',
       [id]
     );
 
-    const guide = result.rows[0];
+    const tourCount = parseInt(tourCheck.rows[0].count);
+    if (tourCount > 0) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'REFERENTIAL_INTEGRITY_ERROR',
+          message: 'Cannot delete guide that is assigned to tours. Please delete the related records first.'
+        }
+      });
+    }
 
-    // Format dates
-    guide.created_at = formatDateTime(guide.created_at);
+    // Hard delete - permanently remove from database
+    await query(
+      'DELETE FROM guides WHERE id = $1',
+      [id]
+    );
 
     res.json({
       success: true,
-      message: 'Guide deleted successfully (soft delete)',
-      data: guide
+      message: 'Guide deleted successfully'
     });
   } catch (error) {
     console.error('Delete guide error:', error);
