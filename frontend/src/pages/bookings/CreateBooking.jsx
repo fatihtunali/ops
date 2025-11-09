@@ -1,16 +1,19 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import MainLayout from '@components/layout/MainLayout';
-import { Card, Button, Input, Loader } from '@components/common';
+import { Card, Button, Input, Loader, CitySelect } from '@components/common';
 import { bookingsService } from '@services/bookingsService';
 import { clientsService } from '@services/clientsService';
 import { hotelsService } from '@services/hotelsService';
 import { tourSuppliersService } from '@services/tourSuppliersService';
 import { guidesService } from '@services/guidesService';
 import { vehiclesService } from '@services/vehiclesService';
+import { entranceFeesService } from '@services/entranceFeesService';
 import { bookingServicesService } from '@services/bookingServicesService';
+import tourRatesService from '@services/tourRatesService';
+import vehicleRatesService from '@services/vehicleRatesService';
 import { formatDate, formatCurrency } from '@utils/formatters';
-import { BOOKING_STATUS } from '@utils/constants';
+import { BOOKING_STATUS, ROOM_TYPES } from '@utils/constants';
 import {
   ArrowLeftIcon,
   ArrowRightIcon,
@@ -30,6 +33,9 @@ const CreateBooking = () => {
   const [initialLoading, setInitialLoading] = useState(isEditMode);
   const [clients, setClients] = useState([]);
   const [errors, setErrors] = useState({});
+
+  // Flag to track if booking data has been loaded (prevents duplicate fetches)
+  const bookingDataLoaded = useRef(false);
 
   // Step 1: Basic Information
   const [bookingData, setBookingData] = useState({
@@ -51,6 +57,7 @@ const CreateBooking = () => {
     tours: [],
     transfers: [],
     flights: [],
+    entranceFees: [],
   });
 
   // Store existing booking totals (for edit mode)
@@ -94,6 +101,7 @@ const CreateBooking = () => {
   const [availableGuides, setAvailableGuides] = useState([]);
   const [availableVehicles, setAvailableVehicles] = useState([]);
   const [tourForm, setTourForm] = useState({
+    tour_code: '',
     tour_name: '',
     tour_date: '',
     duration: '',
@@ -101,6 +109,7 @@ const CreateBooking = () => {
     operation_type: 'supplier',
     supplier_id: '',
     supplier_cost: 0,
+    cost_per_person: 0,
     guide_id: '',
     guide_cost: 0,
     vehicle_id: '',
@@ -122,12 +131,14 @@ const CreateBooking = () => {
   const [showTransferForm, setShowTransferForm] = useState(false);
   const [editingTransferIndex, setEditingTransferIndex] = useState(null);
   const [transferForm, setTransferForm] = useState({
-    transfer_type: 'Airport Pickup',
+    transfer_type: 'airport',
+    city: '',
+    vehicle_type_id: '',
+    vehicle_type: '',
     transfer_date: '',
     from_location: '',
     to_location: '',
     pax_count: 1,
-    vehicle_type: '',
     operation_type: 'supplier',
     supplier_id: '',
     vehicle_id: '',
@@ -163,6 +174,37 @@ const CreateBooking = () => {
     notes: '',
   });
 
+  // Entrance Fee form management
+  const [showEntranceFeeForm, setShowEntranceFeeForm] = useState(false);
+  const [editingEntranceFeeIndex, setEditingEntranceFeeIndex] = useState(null);
+  const [availableEntranceFees, setAvailableEntranceFees] = useState([]);
+
+  // Hotel seasonal rates
+  const [hotelSeasonalRates, setHotelSeasonalRates] = useState([]);
+
+  // Tour rates and vehicle rates
+  const [availableTourRates, setAvailableTourRates] = useState([]);
+  const [availableVehicleRates, setAvailableVehicleRates] = useState([]);
+  const [availableCities, setAvailableCities] = useState([]);
+
+  const [entranceFeeForm, setEntranceFeeForm] = useState({
+    entrance_fee_id: '',
+    attraction_name: '',
+    visit_date: '',
+    adults_count: 1,
+    children_count: 0,
+    adult_rate: 0,
+    child_rate: 0,
+    total_cost: 0,
+    sell_price: 0,
+    margin: 0,
+    payment_status: 'pending',
+    paid_amount: 0,
+    confirmation_number: '',
+    voucher_issued: false,
+    notes: '',
+  });
+
   // Fetch all data on mount
   useEffect(() => {
     fetchClients();
@@ -170,14 +212,25 @@ const CreateBooking = () => {
     fetchSuppliers();
     fetchGuides();
     fetchVehicles();
+    fetchEntranceFees();
+    fetchTourRates();
+    fetchVehicleRates();
   }, []);
 
-  // Fetch booking data if in edit mode
+  // Fetch hotel seasonal rates after hotels are loaded
   useEffect(() => {
-    if (isEditMode) {
+    if (availableHotels.length > 0) {
+      fetchHotelSeasonalRates();
+    }
+  }, [availableHotels]);
+
+  // Fetch booking data if in edit mode (only once)
+  useEffect(() => {
+    if (isEditMode && !bookingDataLoaded.current) {
+      bookingDataLoaded.current = true;
       fetchBookingData();
     }
-  }, [id]);
+  }, [id, isEditMode]);
 
   const fetchClients = async () => {
     try {
@@ -229,13 +282,74 @@ const CreateBooking = () => {
     }
   };
 
+  const fetchEntranceFees = async () => {
+    try {
+      const response = await entranceFeesService.getAll({ is_active: true });
+      const data = response?.data || response;
+      setAvailableEntranceFees(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('Failed to fetch entrance fees:', error);
+    }
+  };
+
+  const fetchTourRates = async () => {
+    try {
+      const response = await tourRatesService.getAll({ is_active: true });
+      const data = response?.data || response;
+      setAvailableTourRates(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('Failed to fetch tour rates:', error);
+    }
+  };
+
+  const fetchVehicleRates = async () => {
+    try {
+      const response = await vehicleRatesService.getAll({ is_active: true });
+      const data = response?.data || response;
+      setAvailableVehicleRates(Array.isArray(data) ? data : []);
+
+      // Extract unique cities
+      if (Array.isArray(data) && data.length > 0) {
+        const cities = [...new Set(data.map(rate => rate.city).filter(Boolean))];
+        setAvailableCities(cities.sort());
+      }
+    } catch (error) {
+      console.error('Failed to fetch vehicle rates:', error);
+    }
+  };
+
+  const fetchHotelSeasonalRates = async () => {
+    try {
+      // Fetch seasonal rates for all hotels
+      const allRates = [];
+      for (const hotel of availableHotels) {
+        try {
+          const response = await hotelsService.getSeasonalRates(hotel.id);
+          const data = response?.data || response;
+          if (Array.isArray(data)) {
+            // Add hotel_id to each rate for easier lookup
+            const ratesWithHotelId = data.map(rate => ({
+              ...rate,
+              hotel_id: hotel.id
+            }));
+            allRates.push(...ratesWithHotelId);
+          }
+        } catch (error) {
+          // Continue if a specific hotel has no rates
+          console.warn(`No rates found for hotel ${hotel.id}:`, error);
+        }
+      }
+      setHotelSeasonalRates(allRates);
+    } catch (error) {
+      console.error('Failed to fetch hotel seasonal rates:', error);
+    }
+  };
+
   const fetchBookingData = async () => {
     try {
       setInitialLoading(true);
       const response = await bookingsService.getById(id);
       const booking = response?.data || response;
-
-      console.log('Fetched booking data:', booking); // Debug log
 
       // Format dates for input fields (YYYY-MM-DD)
       // Backend sends dates in DD/MM/YYYY format
@@ -289,13 +403,42 @@ const CreateBooking = () => {
         grossProfit: parseFloat(booking.gross_profit) || 0,
       });
 
-      console.log('Formatted dates:', {
-        from: formatDateForInput(booking.travel_date_from),
-        to: formatDateForInput(booking.travel_date_to)
-      }); // Debug log
+      // Fetch all services for this booking
+      const [hotelsRes, toursRes, transfersRes, flightsRes] = await Promise.allSettled([
+        bookingServicesService.hotels.getByBookingId(id),
+        bookingServicesService.tours.getByBookingId(id),
+        bookingServicesService.transfers.getByBookingId(id),
+        bookingServicesService.flights.getByBookingId(id),
+      ]);
 
-      // Note: Services would need to be fetched separately from their respective endpoints
-      // For now, we'll leave services empty - you can add this later if needed
+      // Process hotels
+      const fetchedHotels = hotelsRes.status === 'fulfilled'
+        ? (hotelsRes.value?.data || hotelsRes.value || [])
+        : [];
+
+      // Process tours
+      const fetchedTours = toursRes.status === 'fulfilled'
+        ? (toursRes.value?.data || toursRes.value || [])
+        : [];
+
+      // Process transfers
+      const fetchedTransfers = transfersRes.status === 'fulfilled'
+        ? (transfersRes.value?.data || transfersRes.value || [])
+        : [];
+
+      // Process flights
+      const fetchedFlights = flightsRes.status === 'fulfilled'
+        ? (flightsRes.value?.data || flightsRes.value || [])
+        : [];
+
+      // Populate services state with fetched data
+      setServices({
+        hotels: fetchedHotels,
+        tours: fetchedTours,
+        transfers: fetchedTransfers,
+        flights: fetchedFlights,
+        entranceFees: [], // Entrance fees will be added if backend supports it
+      });
 
     } catch (error) {
       console.error('Failed to fetch booking:', error);
@@ -386,7 +529,8 @@ const CreateBooking = () => {
     const hasServices = services.hotels.length > 0 ||
                        services.tours.length > 0 ||
                        services.transfers.length > 0 ||
-                       services.flights.length > 0;
+                       services.flights.length > 0 ||
+                       services.entranceFees.length > 0;
 
     if (isEditMode && !hasServices && existingTotals.totalSell > 0) {
       // Return existing totals from database
@@ -416,6 +560,11 @@ const CreateBooking = () => {
     services.flights.forEach((flight) => {
       totalSell += parseFloat(flight.sell_price) || 0;
       totalCost += parseFloat(flight.cost_price) || 0;
+    });
+
+    services.entranceFees.forEach((entranceFee) => {
+      totalSell += parseFloat(entranceFee.sell_price) || 0;
+      totalCost += parseFloat(entranceFee.total_cost) || 0;
     });
 
     return {
@@ -473,6 +622,56 @@ const CreateBooking = () => {
     }));
   };
 
+  // Helper function to find the appropriate seasonal rate for a hotel
+  const findHotelSeasonalRate = (hotelId, checkInDate, roomType) => {
+    if (!hotelId || !checkInDate) return null;
+
+    // Filter rates for this specific hotel
+    const hotelRates = hotelSeasonalRates.filter(
+      (rate) => rate.hotel_id === parseInt(hotelId)
+    );
+
+    if (hotelRates.length === 0) return null;
+
+    // Find the rate that includes the check-in date
+    const checkIn = new Date(checkInDate);
+    const applicableRate = hotelRates.find((rate) => {
+      const validFrom = new Date(rate.valid_from);
+      const validTo = new Date(rate.valid_to);
+      return checkIn >= validFrom && checkIn <= validTo;
+    });
+
+    return applicableRate || null;
+  };
+
+  // Helper function to get the appropriate price based on room type
+  const getPriceForRoomType = (rate, roomType) => {
+    if (!rate || !roomType) return 0;
+
+    // Map room types to rate fields
+    // Note: Hotel rates are per-person, but cost_per_night is for the entire room
+    switch (roomType.toUpperCase()) {
+      case 'SGL':
+      case 'SINGLE':
+        // Single room: double rate + single supplement (total for the room)
+        return (
+          (parseFloat(rate.price_per_person_double) || 0) +
+          (parseFloat(rate.price_single_supplement) || 0)
+        );
+      case 'DBL':
+      case 'DOUBLE':
+        // Double room: price per person × 2 (total for the room)
+        return (parseFloat(rate.price_per_person_double) || 0) * 2;
+      case 'TRP':
+      case 'TRIPLE':
+        // Triple room: price per person × 3 (total for the room)
+        return (parseFloat(rate.price_per_person_triple) || 0) * 3;
+      default:
+        // For Suite or Special, use double rate × 2 as default
+        return (parseFloat(rate.price_per_person_double) || 0) * 2;
+    }
+  };
+
   // Hotel form handlers
   const handleHotelFormChange = (field, value) => {
     setHotelForm((prev) => {
@@ -484,6 +683,14 @@ const CreateBooking = () => {
         if (selectedHotel) {
           updated.hotel_name = selectedHotel.name;
         }
+
+        // Auto-populate rate if check-in date and room type are already set
+        if (updated.check_in && updated.room_type) {
+          const rate = findHotelSeasonalRate(value, updated.check_in, updated.room_type);
+          if (rate) {
+            updated.cost_per_night = getPriceForRoomType(rate, updated.room_type);
+          }
+        }
       }
 
       // Auto-calculate nights when dates change
@@ -494,6 +701,22 @@ const CreateBooking = () => {
           const diffTime = checkOut - checkIn;
           const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
           updated.nights = diffDays > 0 ? diffDays : 0;
+        }
+
+        // Auto-populate rate when check-in date changes
+        if (field === 'check_in' && value && updated.hotel_id && updated.room_type) {
+          const rate = findHotelSeasonalRate(updated.hotel_id, value, updated.room_type);
+          if (rate) {
+            updated.cost_per_night = getPriceForRoomType(rate, updated.room_type);
+          }
+        }
+      }
+
+      // Auto-populate rate when room type changes
+      if (field === 'room_type' && value && updated.hotel_id && updated.check_in) {
+        const rate = findHotelSeasonalRate(updated.hotel_id, updated.check_in, value);
+        if (rate) {
+          updated.cost_per_night = getPriceForRoomType(rate, value);
         }
       }
 
@@ -556,8 +779,8 @@ const CreateBooking = () => {
 
   const handleSaveHotel = () => {
     // Validation
-    if (!hotelForm.hotel_id || !hotelForm.check_in || !hotelForm.check_out) {
-      alert('Please fill in all required fields (Hotel, Check-in, Check-out)');
+    if (!hotelForm.hotel_id || !hotelForm.check_in || !hotelForm.check_out || !hotelForm.room_type) {
+      alert('Please fill in all required fields (Hotel, Room Type, Check-in, Check-out)');
       return;
     }
 
@@ -591,6 +814,39 @@ const CreateBooking = () => {
     setTourForm((prev) => {
       const updated = { ...prev, [field]: value };
 
+      // Auto-populate tour details when tour_code changes (supplier-based tours)
+      if (field === 'tour_code' && value && updated.operation_type === 'supplier') {
+        const selectedTour = availableTourRates.find((t) => t.tour_code === value && t.supplier_id === parseInt(updated.supplier_id));
+        if (selectedTour) {
+          updated.tour_name = selectedTour.tour_name || '';
+          updated.duration = selectedTour.duration || '';
+          updated.cost_per_person = parseFloat(selectedTour.cost_per_person) || 0;
+
+          // Calculate total cost based on pax count
+          const paxCount = parseInt(updated.pax_count) || 1;
+          updated.supplier_cost = updated.cost_per_person * paxCount;
+          updated.total_cost = updated.supplier_cost;
+        }
+      }
+
+      // Auto-update costs when supplier_id changes
+      if (field === 'supplier_id' && value && updated.tour_code) {
+        const selectedTour = availableTourRates.find((t) => t.tour_code === updated.tour_code && t.supplier_id === parseInt(value));
+        if (selectedTour) {
+          updated.cost_per_person = parseFloat(selectedTour.cost_per_person) || 0;
+          const paxCount = parseInt(updated.pax_count) || 1;
+          updated.supplier_cost = updated.cost_per_person * paxCount;
+          updated.total_cost = updated.supplier_cost;
+        }
+      }
+
+      // Auto-calculate total cost when pax count changes
+      if (field === 'pax_count' && updated.operation_type === 'supplier' && updated.cost_per_person) {
+        const paxCount = parseInt(value) || 1;
+        updated.supplier_cost = updated.cost_per_person * paxCount;
+        updated.total_cost = updated.supplier_cost;
+      }
+
       // Auto-calculate total cost for self-operated tours
       if (field === 'guide_cost' || field === 'vehicle_cost' || field === 'entrance_fees' || field === 'other_costs' || field === 'supplier_cost') {
         if (updated.operation_type === 'self-operated') {
@@ -616,6 +872,8 @@ const CreateBooking = () => {
         } else {
           updated.supplier_id = '';
           updated.supplier_cost = 0;
+          updated.tour_code = '';
+          updated.cost_per_person = 0;
         }
       }
 
@@ -632,6 +890,7 @@ const CreateBooking = () => {
 
   const resetTourForm = () => {
     setTourForm({
+      tour_code: '',
       tour_name: '',
       tour_date: '',
       duration: '',
@@ -639,6 +898,7 @@ const CreateBooking = () => {
       operation_type: 'supplier',
       supplier_id: '',
       supplier_cost: 0,
+      cost_per_person: 0,
       guide_id: '',
       guide_cost: 0,
       vehicle_id: '',
@@ -703,6 +963,81 @@ const CreateBooking = () => {
     setTransferForm((prev) => {
       const updated = { ...prev, [field]: value };
 
+      // Auto-populate vehicle details when vehicle_type_id changes
+      if (field === 'vehicle_type_id' && value && updated.city && updated.transfer_type) {
+        const selectedRate = availableVehicleRates.find(
+          (rate) => rate.id === parseInt(value) && rate.city === updated.city
+        );
+        if (selectedRate) {
+          updated.vehicle_type = selectedRate.vehicle_type || '';
+
+          // Auto-populate cost based on transfer type
+          let cost = 0;
+          switch (updated.transfer_type) {
+            case 'airport':
+              cost = parseFloat(selectedRate.airport_transfer_rate) || 0;
+              break;
+            case 'intercity':
+              cost = parseFloat(selectedRate.intercity_rate) || 0;
+              break;
+            case 'hourly':
+              cost = parseFloat(selectedRate.hourly_rate) || 0;
+              break;
+            default:
+              cost = parseFloat(selectedRate.airport_transfer_rate) || 0;
+          }
+          updated.cost_price = cost;
+        }
+      }
+
+      // Auto-update cost when city changes and vehicle is selected
+      if (field === 'city' && value && updated.vehicle_type_id) {
+        const selectedRate = availableVehicleRates.find(
+          (rate) => rate.id === parseInt(updated.vehicle_type_id) && rate.city === value
+        );
+        if (selectedRate) {
+          let cost = 0;
+          switch (updated.transfer_type) {
+            case 'airport':
+              cost = parseFloat(selectedRate.airport_transfer_rate) || 0;
+              break;
+            case 'intercity':
+              cost = parseFloat(selectedRate.intercity_rate) || 0;
+              break;
+            case 'hourly':
+              cost = parseFloat(selectedRate.hourly_rate) || 0;
+              break;
+            default:
+              cost = parseFloat(selectedRate.airport_transfer_rate) || 0;
+          }
+          updated.cost_price = cost;
+        }
+      }
+
+      // Auto-update cost when transfer type changes
+      if (field === 'transfer_type' && value && updated.vehicle_type_id && updated.city) {
+        const selectedRate = availableVehicleRates.find(
+          (rate) => rate.id === parseInt(updated.vehicle_type_id) && rate.city === updated.city
+        );
+        if (selectedRate) {
+          let cost = 0;
+          switch (value) {
+            case 'airport':
+              cost = parseFloat(selectedRate.airport_transfer_rate) || 0;
+              break;
+            case 'intercity':
+              cost = parseFloat(selectedRate.intercity_rate) || 0;
+              break;
+            case 'hourly':
+              cost = parseFloat(selectedRate.hourly_rate) || 0;
+              break;
+            default:
+              cost = parseFloat(selectedRate.airport_transfer_rate) || 0;
+          }
+          updated.cost_price = cost;
+        }
+      }
+
       // Auto-calculate margin
       if (field === 'sell_price' || field === 'cost_price') {
         const sellPrice = parseFloat(updated.sell_price) || 0;
@@ -716,12 +1051,14 @@ const CreateBooking = () => {
 
   const resetTransferForm = () => {
     setTransferForm({
-      transfer_type: 'Airport Pickup',
+      transfer_type: 'airport',
+      city: '',
+      vehicle_type_id: '',
+      vehicle_type: '',
       transfer_date: '',
       from_location: '',
       to_location: '',
       pax_count: 1,
-      vehicle_type: '',
       operation_type: 'supplier',
       supplier_id: '',
       vehicle_id: '',
@@ -852,6 +1189,107 @@ const CreateBooking = () => {
   const handleDeleteFlight = (index) => {
     if (confirm('Are you sure you want to delete this flight?')) {
       removeService('flights', index);
+    }
+  };
+
+  // Entrance Fee form handlers
+  const handleEntranceFeeFormChange = (field, value) => {
+    setEntranceFeeForm((prev) => {
+      const updated = { ...prev, [field]: value };
+
+      // Auto-select attraction details when entrance_fee_id changes
+      if (field === 'entrance_fee_id' && value) {
+        const selectedFee = availableEntranceFees.find((f) => f.id === parseInt(value));
+        if (selectedFee) {
+          updated.attraction_name = selectedFee.attraction_name;
+          updated.adult_rate = parseFloat(selectedFee.adult_rate) || 0;
+          updated.child_rate = parseFloat(selectedFee.child_rate) || 0;
+        }
+      }
+
+      // Auto-calculate total cost when counts or rates change
+      if (
+        field === 'adults_count' ||
+        field === 'children_count' ||
+        field === 'adult_rate' ||
+        field === 'child_rate'
+      ) {
+        const adultsCount = parseInt(updated.adults_count) || 0;
+        const childrenCount = parseInt(updated.children_count) || 0;
+        const adultRate = parseFloat(updated.adult_rate) || 0;
+        const childRate = parseFloat(updated.child_rate) || 0;
+        updated.total_cost = (adultsCount * adultRate) + (childrenCount * childRate);
+      }
+
+      // Auto-calculate margin
+      if (field === 'sell_price' || field === 'total_cost') {
+        const sellPrice = parseFloat(updated.sell_price) || 0;
+        const totalCost = parseFloat(updated.total_cost) || 0;
+        updated.margin = sellPrice - totalCost;
+      }
+
+      return updated;
+    });
+  };
+
+  const resetEntranceFeeForm = () => {
+    setEntranceFeeForm({
+      entrance_fee_id: '',
+      attraction_name: '',
+      visit_date: '',
+      adults_count: 1,
+      children_count: 0,
+      adult_rate: 0,
+      child_rate: 0,
+      total_cost: 0,
+      sell_price: 0,
+      margin: 0,
+      payment_status: 'pending',
+      paid_amount: 0,
+      confirmation_number: '',
+      voucher_issued: false,
+      notes: '',
+    });
+    setEditingEntranceFeeIndex(null);
+  };
+
+  const handleAddEntranceFee = () => {
+    setShowEntranceFeeForm(true);
+    resetEntranceFeeForm();
+  };
+
+  const handleEditEntranceFee = (index) => {
+    setEditingEntranceFeeIndex(index);
+    setEntranceFeeForm(services.entranceFees[index]);
+    setShowEntranceFeeForm(true);
+  };
+
+  const handleSaveEntranceFee = () => {
+    if (!entranceFeeForm.entrance_fee_id || !entranceFeeForm.visit_date) {
+      alert('Please fill in all required fields (Attraction, Visit Date)');
+      return;
+    }
+
+    if (editingEntranceFeeIndex !== null) {
+      const updatedEntranceFees = [...services.entranceFees];
+      updatedEntranceFees[editingEntranceFeeIndex] = entranceFeeForm;
+      setServices((prev) => ({ ...prev, entranceFees: updatedEntranceFees }));
+    } else {
+      addService('entranceFees', entranceFeeForm);
+    }
+
+    setShowEntranceFeeForm(false);
+    resetEntranceFeeForm();
+  };
+
+  const handleCancelEntranceFeeForm = () => {
+    setShowEntranceFeeForm(false);
+    resetEntranceFeeForm();
+  };
+
+  const handleDeleteEntranceFee = (index) => {
+    if (confirm('Are you sure you want to delete this entrance fee?')) {
+      removeService('entranceFees', index);
     }
   };
 
@@ -1116,6 +1554,7 @@ const CreateBooking = () => {
                     { key: 'tours', label: 'Tours', count: services.tours.length },
                     { key: 'transfers', label: 'Transfers', count: services.transfers.length },
                     { key: 'flights', label: 'Flights', count: services.flights.length },
+                    { key: 'entranceFees', label: 'Entrance Fees', count: services.entranceFees.length },
                   ].map((tab) => (
                     <button
                       key={tab.key}
@@ -1170,13 +1609,21 @@ const CreateBooking = () => {
                         </div>
 
                         <div>
-                          <Input
-                            type="text"
-                            label="Room Type"
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Room Type <span className="text-red-500">*</span>
+                          </label>
+                          <select
                             value={hotelForm.room_type}
                             onChange={(e) => handleHotelFormChange('room_type', e.target.value)}
-                            placeholder="e.g., Standard Double, Suite"
-                          />
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          >
+                            <option value="">Select Room Type</option>
+                            {ROOM_TYPES.map((type) => (
+                              <option key={type.value} value={type.value}>
+                                {type.label}
+                              </option>
+                            ))}
+                          </select>
                         </div>
                       </div>
 
@@ -1374,7 +1821,9 @@ const CreateBooking = () => {
                                 </div>
                                 <div>
                                   <p className="text-slate-500">Room Type</p>
-                                  <p className="text-slate-900">{hotel.room_type || 'N/A'}</p>
+                                  <p className="text-slate-900">
+                                    {ROOM_TYPES.find((rt) => rt.value === hotel.room_type)?.label || hotel.room_type || 'N/A'}
+                                  </p>
                                 </div>
                                 <div>
                                   <p className="text-slate-500">Cost / Sell / Margin</p>
@@ -1437,49 +1886,11 @@ const CreateBooking = () => {
                         {editingTourIndex !== null ? 'Edit Tour' : 'Add New Tour'}
                       </h4>
 
-                      {/* Basic Info */}
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
-                          <Input
-                            type="text"
-                            label="Tour Name *"
-                            value={tourForm.tour_name}
-                            onChange={(e) => handleTourFormChange('tour_name', e.target.value)}
-                            placeholder="e.g., Cappadocia Hot Air Balloon"
-                          />
-                        </div>
-                        <div>
-                          <Input
-                            type="date"
-                            label="Tour Date *"
-                            value={tourForm.tour_date}
-                            onChange={(e) => handleTourFormChange('tour_date', e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <Input
-                            type="text"
-                            label="Duration"
-                            value={tourForm.duration}
-                            onChange={(e) => handleTourFormChange('duration', e.target.value)}
-                            placeholder="e.g., Full Day, 4 hours"
-                          />
-                        </div>
-                      </div>
-
+                      {/* Operation Type Selection */}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <Input
-                            type="number"
-                            label="PAX Count"
-                            value={tourForm.pax_count}
-                            onChange={(e) => handleTourFormChange('pax_count', e.target.value)}
-                            min="1"
-                          />
-                        </div>
-                        <div>
                           <label className="block text-sm font-medium text-slate-700 mb-2">
-                            Operation Type *
+                            Operation Type <span className="text-red-500">*</span>
                           </label>
                           <select
                             value={tourForm.operation_type}
@@ -1490,23 +1901,32 @@ const CreateBooking = () => {
                             <option value="self-operated">Self-Operated</option>
                           </select>
                         </div>
+                        <div>
+                          <Input
+                            type="number"
+                            label="PAX Count"
+                            value={tourForm.pax_count}
+                            onChange={(e) => handleTourFormChange('pax_count', e.target.value)}
+                            min="1"
+                          />
+                        </div>
                       </div>
 
-                      {/* Supplier Fields */}
+                      {/* Supplier-based Tour Selection */}
                       {tourForm.operation_type === 'supplier' && (
-                        <div className="bg-white rounded-lg p-3 border border-green-300">
-                          <h5 className="text-sm font-medium text-slate-700 mb-3">Supplier Details</h5>
+                        <div className="bg-white rounded-lg p-3 border border-green-300 space-y-4">
+                          <h5 className="text-sm font-medium text-slate-700">Select Tour</h5>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                               <label className="block text-sm font-medium text-slate-700 mb-2">
-                                Supplier
+                                Supplier <span className="text-red-500">*</span>
                               </label>
                               <select
                                 value={tourForm.supplier_id}
                                 onChange={(e) => handleTourFormChange('supplier_id', e.target.value)}
                                 className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500"
                               >
-                                <option value="">Select supplier...</option>
+                                <option value="">Select supplier first...</option>
                                 {availableSuppliers.map((supplier) => (
                                   <option key={supplier.id} value={supplier.id}>
                                     {supplier.name}
@@ -1515,13 +1935,115 @@ const CreateBooking = () => {
                               </select>
                             </div>
                             <div>
+                              <label className="block text-sm font-medium text-slate-700 mb-2">
+                                Tour <span className="text-red-500">*</span>
+                              </label>
+                              <select
+                                value={tourForm.tour_code}
+                                onChange={(e) => handleTourFormChange('tour_code', e.target.value)}
+                                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                                disabled={!tourForm.supplier_id}
+                              >
+                                <option value="">
+                                  {tourForm.supplier_id ? 'Select tour...' : 'Select supplier first'}
+                                </option>
+                                {availableTourRates
+                                  .filter((rate) => rate.supplier_id === parseInt(tourForm.supplier_id))
+                                  .map((rate) => (
+                                    <option key={rate.id} value={rate.tour_code}>
+                                      {rate.tour_name} - {rate.tour_code}
+                                    </option>
+                                  ))}
+                              </select>
+                            </div>
+                          </div>
+
+                          {/* Auto-populated Tour Details */}
+                          {tourForm.tour_name && (
+                            <div className="bg-green-50 p-3 rounded border border-green-200">
+                              <p className="text-sm text-slate-700">
+                                <strong>Tour:</strong> {tourForm.tour_name}
+                              </p>
+                              <p className="text-sm text-slate-700">
+                                <strong>Duration:</strong> {tourForm.duration || 'N/A'}
+                              </p>
+                              <p className="text-sm text-slate-700">
+                                <strong>Cost per Person:</strong> {formatCurrency(tourForm.cost_per_person)}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Self-Operated Tour Name Input */}
+                      {tourForm.operation_type === 'self-operated' && (
+                        <div>
+                          <Input
+                            type="text"
+                            label="Tour Name *"
+                            value={tourForm.tour_name}
+                            onChange={(e) => handleTourFormChange('tour_name', e.target.value)}
+                            placeholder="e.g., Cappadocia Hot Air Balloon"
+                          />
+                        </div>
+                      )}
+
+                      {/* Tour Date and Duration */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <Input
+                            type="date"
+                            label="Tour Date *"
+                            value={tourForm.tour_date}
+                            onChange={(e) => handleTourFormChange('tour_date', e.target.value)}
+                          />
+                        </div>
+                        {tourForm.operation_type === 'self-operated' && (
+                          <div>
+                            <Input
+                              type="text"
+                              label="Duration"
+                              value={tourForm.duration}
+                              onChange={(e) => handleTourFormChange('duration', e.target.value)}
+                              placeholder="e.g., Full Day, 4 hours"
+                            />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Supplier Cost (read-only for supplier tours) */}
+                      {tourForm.operation_type === 'supplier' && tourForm.supplier_cost > 0 && (
+                        <div className="bg-white rounded-lg p-3 border border-green-300">
+                          <h5 className="text-sm font-medium text-slate-700 mb-3">Cost Calculation</h5>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
                               <Input
                                 type="number"
-                                label="Supplier Cost"
+                                label="Cost per Person"
+                                value={tourForm.cost_per_person}
+                                readOnly
+                                disabled
+                                className="bg-gray-100"
+                              />
+                            </div>
+                            <div>
+                              <Input
+                                type="number"
+                                label="Total Supplier Cost"
                                 value={tourForm.supplier_cost}
-                                onChange={(e) => handleTourFormChange('supplier_cost', e.target.value)}
-                                min="0"
-                                step="0.01"
+                                readOnly
+                                disabled
+                                className="bg-gray-100"
+                              />
+                            </div>
+                            <div>
+                              <Input
+                                type="number"
+                                label="Total Cost"
+                                value={tourForm.total_cost}
+                                readOnly
+                                disabled
+                                className="bg-gray-100"
                               />
                             </div>
                           </div>
@@ -1817,20 +2339,73 @@ const CreateBooking = () => {
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                           <label className="block text-sm font-medium text-slate-700 mb-2">
-                            Transfer Type *
+                            Transfer Type <span className="text-red-500">*</span>
                           </label>
                           <select
                             value={transferForm.transfer_type}
                             onChange={(e) => handleTransferFormChange('transfer_type', e.target.value)}
                             className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                           >
-                            <option value="Airport Pickup">Airport Pickup</option>
-                            <option value="Airport Drop-off">Airport Drop-off</option>
-                            <option value="Inter-city">Inter-city Transfer</option>
-                            <option value="City Tour">City Tour Transport</option>
-                            <option value="Other">Other</option>
+                            <option value="airport">Airport Transfer</option>
+                            <option value="intercity">Intercity Transfer</option>
+                            <option value="hourly">Hourly Rental</option>
                           </select>
                         </div>
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-2">
+                            City <span className="text-red-500">*</span>
+                          </label>
+                          <select
+                            value={transferForm.city}
+                            onChange={(e) => handleTransferFormChange('city', e.target.value)}
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                          >
+                            <option value="">Select city...</option>
+                            {availableCities.map((city) => (
+                              <option key={city} value={city}>
+                                {city}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-2">
+                            Vehicle Type <span className="text-red-500">*</span>
+                          </label>
+                          <select
+                            value={transferForm.vehicle_type_id}
+                            onChange={(e) => handleTransferFormChange('vehicle_type_id', e.target.value)}
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                            disabled={!transferForm.city}
+                          >
+                            <option value="">
+                              {transferForm.city ? 'Select vehicle...' : 'Select city first'}
+                            </option>
+                            {availableVehicleRates
+                              .filter((rate) => rate.city === transferForm.city)
+                              .map((rate) => (
+                                <option key={rate.id} value={rate.id}>
+                                  {rate.vehicle_type} - {rate.supplier_name}
+                                </option>
+                              ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Auto-populated Cost Display */}
+                      {transferForm.cost_price > 0 && (
+                        <div className="bg-purple-50 p-3 rounded border border-purple-200">
+                          <p className="text-sm text-slate-700">
+                            <strong>Vehicle:</strong> {transferForm.vehicle_type}
+                          </p>
+                          <p className="text-sm text-slate-700">
+                            <strong>Auto-populated Cost:</strong> {formatCurrency(transferForm.cost_price)}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Date and Location Details */}
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                           <Input
                             type="date"
@@ -1841,44 +2416,32 @@ const CreateBooking = () => {
                         </div>
                         <div>
                           <Input
+                            type="text"
+                            label="Pickup Location"
+                            value={transferForm.from_location}
+                            onChange={(e) => handleTransferFormChange('from_location', e.target.value)}
+                            placeholder="e.g., Hotel name or address"
+                          />
+                        </div>
+                        <div>
+                          <Input
+                            type="text"
+                            label="Dropoff Location"
+                            value={transferForm.to_location}
+                            onChange={(e) => handleTransferFormChange('to_location', e.target.value)}
+                            placeholder="e.g., Airport or destination"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <Input
                             type="number"
                             label="PAX Count"
                             value={transferForm.pax_count}
                             onChange={(e) => handleTransferFormChange('pax_count', e.target.value)}
                             min="1"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <Input
-                            type="text"
-                            label="From Location *"
-                            value={transferForm.from_location}
-                            onChange={(e) => handleTransferFormChange('from_location', e.target.value)}
-                            placeholder="e.g., Istanbul Airport (IST)"
-                          />
-                        </div>
-                        <div>
-                          <Input
-                            type="text"
-                            label="To Location *"
-                            value={transferForm.to_location}
-                            onChange={(e) => handleTransferFormChange('to_location', e.target.value)}
-                            placeholder="e.g., Sultanahmet Hotel"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <Input
-                            type="text"
-                            label="Vehicle Type"
-                            value={transferForm.vehicle_type}
-                            onChange={(e) => handleTransferFormChange('vehicle_type', e.target.value)}
-                            placeholder="e.g., Sedan, Minivan, Bus"
                           />
                         </div>
                         <div>
@@ -2396,6 +2959,296 @@ const CreateBooking = () => {
                         <p className="text-slate-600 mb-4">No flights added yet</p>
                         <Button icon={PlusIcon} onClick={handleAddFlight}>
                           Add Your First Flight
+                        </Button>
+                      </div>
+                    )
+                  )}
+                </div>
+              )}
+
+              {/* Entrance Fees Tab */}
+              {activeServiceTab === 'entranceFees' && (
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-md font-medium text-slate-900">Entrance Fee Services</h3>
+                    <Button icon={PlusIcon} onClick={handleAddEntranceFee}>
+                      Add Entrance Fee
+                    </Button>
+                  </div>
+
+                  {/* Entrance Fee Form */}
+                  {showEntranceFeeForm && (
+                    <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 space-y-4">
+                      <h4 className="font-medium text-slate-900">
+                        {editingEntranceFeeIndex !== null ? 'Edit Entrance Fee' : 'Add New Entrance Fee'}
+                      </h4>
+
+                      {/* Attraction Selection */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-2">
+                            Attraction *
+                          </label>
+                          <select
+                            value={entranceFeeForm.entrance_fee_id}
+                            onChange={(e) => handleEntranceFeeFormChange('entrance_fee_id', e.target.value)}
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                          >
+                            <option value="">Select an attraction...</option>
+                            {availableEntranceFees.map((fee) => (
+                              <option key={fee.id} value={fee.id}>
+                                {fee.attraction_name} - {fee.city} ({fee.season_name})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <Input
+                            type="date"
+                            label="Visit Date *"
+                            value={entranceFeeForm.visit_date}
+                            onChange={(e) => handleEntranceFeeFormChange('visit_date', e.target.value)}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Visitor Counts */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <Input
+                            type="number"
+                            label="Number of Adults"
+                            value={entranceFeeForm.adults_count}
+                            onChange={(e) => handleEntranceFeeFormChange('adults_count', e.target.value)}
+                            min="0"
+                          />
+                        </div>
+                        <div>
+                          <Input
+                            type="number"
+                            label="Number of Children"
+                            value={entranceFeeForm.children_count}
+                            onChange={(e) => handleEntranceFeeFormChange('children_count', e.target.value)}
+                            min="0"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Auto-populated Attraction Info */}
+                      {entranceFeeForm.attraction_name && (
+                        <div className="bg-purple-50 p-3 rounded border border-purple-200">
+                          <p className="text-sm text-slate-700">
+                            <strong>Attraction:</strong> {entranceFeeForm.attraction_name}
+                          </p>
+                          <p className="text-sm text-slate-700">
+                            <strong>Adult Rate:</strong> {formatCurrency(entranceFeeForm.adult_rate)} |
+                            <strong> Child Rate:</strong> {formatCurrency(entranceFeeForm.child_rate)}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Rates (Read-only, auto-populated) */}
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                          <Input
+                            type="number"
+                            label="Adult Rate (Auto-populated)"
+                            value={entranceFeeForm.adult_rate}
+                            readOnly
+                            disabled
+                            className="bg-gray-100"
+                          />
+                        </div>
+                        <div>
+                          <Input
+                            type="number"
+                            label="Child Rate (Auto-populated)"
+                            value={entranceFeeForm.child_rate}
+                            readOnly
+                            disabled
+                            className="bg-gray-100"
+                          />
+                        </div>
+                        <div>
+                          <Input
+                            type="number"
+                            label="Total Cost"
+                            value={entranceFeeForm.total_cost}
+                            readOnly
+                            disabled
+                            className="bg-gray-100"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Pricing */}
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                          <Input
+                            type="number"
+                            label="Sell Price"
+                            value={entranceFeeForm.sell_price}
+                            onChange={(e) => handleEntranceFeeFormChange('sell_price', e.target.value)}
+                            min="0"
+                            step="0.01"
+                          />
+                        </div>
+                        <div>
+                          <Input
+                            type="number"
+                            label="Margin"
+                            value={entranceFeeForm.margin}
+                            readOnly
+                            disabled
+                            className="bg-gray-100"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-2">
+                            Payment Status
+                          </label>
+                          <select
+                            value={entranceFeeForm.payment_status}
+                            onChange={(e) => handleEntranceFeeFormChange('payment_status', e.target.value)}
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                          >
+                            <option value="pending">Pending</option>
+                            <option value="partial">Partial</option>
+                            <option value="paid">Paid</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Additional Info */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <Input
+                            type="number"
+                            label="Paid Amount"
+                            value={entranceFeeForm.paid_amount}
+                            onChange={(e) => handleEntranceFeeFormChange('paid_amount', e.target.value)}
+                            min="0"
+                            step="0.01"
+                          />
+                        </div>
+                        <div>
+                          <Input
+                            type="text"
+                            label="Confirmation Number"
+                            value={entranceFeeForm.confirmation_number}
+                            onChange={(e) => handleEntranceFeeFormChange('confirmation_number', e.target.value)}
+                            placeholder="e.g., REF123456"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="flex items-center">
+                          <input
+                            type="checkbox"
+                            id="entrancefee_voucher"
+                            checked={entranceFeeForm.voucher_issued}
+                            onChange={(e) => handleEntranceFeeFormChange('voucher_issued', e.target.checked)}
+                            className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
+                          />
+                          <label htmlFor="entrancefee_voucher" className="ml-2 text-sm text-slate-700">
+                            Voucher Issued
+                          </label>
+                        </div>
+
+                        <div>
+                          <Input
+                            type="textarea"
+                            label="Notes"
+                            value={entranceFeeForm.notes}
+                            onChange={(e) => handleEntranceFeeFormChange('notes', e.target.value)}
+                            rows="3"
+                            placeholder="Special instructions, accessibility requirements, etc."
+                          />
+                        </div>
+                      </div>
+
+                      {/* Form Actions */}
+                      <div className="flex gap-2 pt-4 border-t border-purple-300">
+                        <Button onClick={handleSaveEntranceFee} icon={CheckIcon}>
+                          {editingEntranceFeeIndex !== null ? 'Update Entrance Fee' : 'Add Entrance Fee'}
+                        </Button>
+                        <Button variant="outline" onClick={handleCancelEntranceFeeForm}>
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Entrance Fees List */}
+                  {services.entranceFees.length > 0 ? (
+                    <div className="space-y-3">
+                      {services.entranceFees.map((entranceFee, index) => (
+                        <div
+                          key={index}
+                          className="bg-white border border-purple-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+                        >
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1">
+                              <h4 className="font-medium text-slate-900">
+                                {entranceFee.attraction_name}
+                              </h4>
+                              <div className="mt-2 grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
+                                <div>
+                                  <p className="text-slate-500">Visit Date</p>
+                                  <p className="text-slate-900">
+                                    {formatDate(entranceFee.visit_date)}
+                                  </p>
+                                </div>
+                                <div>
+                                  <p className="text-slate-500">Visitors</p>
+                                  <p className="text-slate-900">
+                                    {entranceFee.adults_count} Adults, {entranceFee.children_count} Children
+                                  </p>
+                                </div>
+                                <div>
+                                  <p className="text-slate-500">Rates (Adult/Child)</p>
+                                  <p className="text-slate-900">
+                                    {formatCurrency(entranceFee.adult_rate)} / {formatCurrency(entranceFee.child_rate)}
+                                  </p>
+                                </div>
+                                <div>
+                                  <p className="text-slate-500">Cost / Sell / Margin</p>
+                                  <p className="text-slate-900">
+                                    {formatCurrency(entranceFee.total_cost)} / {formatCurrency(entranceFee.sell_price)} /
+                                    <span className={entranceFee.margin >= 0 ? 'text-green-600 font-medium' : 'text-red-600 font-medium'}>
+                                      {' '}{formatCurrency(entranceFee.margin)}
+                                    </span>
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex gap-2 ml-4">
+                              <button
+                                onClick={() => handleEditEntranceFee(index)}
+                                className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                                title="Edit Entrance Fee"
+                              >
+                                <PencilIcon className="h-5 w-5" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteEntranceFee(index)}
+                                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                title="Delete Entrance Fee"
+                              >
+                                <TrashIcon className="h-5 w-5" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    !showEntranceFeeForm && (
+                      <div className="text-center py-8 bg-purple-50 rounded-lg border border-purple-200">
+                        <p className="text-slate-600 mb-4">No entrance fees added yet</p>
+                        <Button icon={PlusIcon} onClick={handleAddEntranceFee}>
+                          Add Your First Entrance Fee
                         </Button>
                       </div>
                     )

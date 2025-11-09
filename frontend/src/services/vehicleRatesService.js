@@ -4,19 +4,19 @@ const vehicleRatesService = {
   // Get all vehicle rates with optional filters
   getAll: async (params = {}) => {
     const response = await api.get('/vehicle-rates', { params });
-    return response.data;
+    return response; // Interceptor already extracts .data
   },
 
   // Get single vehicle rate by ID
   getById: async (id) => {
     const response = await api.get(`/vehicle-rates/${id}`);
-    return response.data;
+    return response; // Interceptor already extracts .data
   },
 
   // Get list of cities with vehicle rates
   getCities: async () => {
     const response = await api.get('/vehicle-rates/cities');
-    return response.data;
+    return response; // Interceptor already extracts .data
   },
 
   // Get suppliers for a specific city
@@ -24,25 +24,25 @@ const vehicleRatesService = {
     const response = await api.get('/vehicle-rates/suppliers', {
       params: { city }
     });
-    return response.data;
+    return response; // Interceptor already extracts .data
   },
 
   // Create new vehicle rate
   create: async (rateData) => {
     const response = await api.post('/vehicle-rates', rateData);
-    return response.data;
+    return response; // Interceptor already extracts .data
   },
 
   // Update vehicle rate
   update: async (id, rateData) => {
     const response = await api.put(`/vehicle-rates/${id}`, rateData);
-    return response.data;
+    return response; // Interceptor already extracts .data
   },
 
   // Delete vehicle rate (soft delete)
   delete: async (id) => {
     const response = await api.delete(`/vehicle-rates/${id}`);
-    return response.data;
+    return response; // Interceptor already extracts .data
   },
 
   // Search rates for booking (by city, supplier, date)
@@ -56,7 +56,7 @@ const vehicleRatesService = {
         is_active: 'true'
       }
     });
-    return response.data;
+    return response; // Interceptor already extracts .data
   }
 };
 
