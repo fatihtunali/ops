@@ -90,7 +90,7 @@ exports.generateHotelVoucher = async (voucherData) => {
       doc.end();
 
       writeStream.on('finish', () => {
-        resolve(filePath);
+        resolve(fileName);
       });
 
       writeStream.on('error', (error) => {
@@ -200,7 +200,7 @@ exports.generateTourVoucher = async (voucherData) => {
       doc.end();
 
       writeStream.on('finish', () => {
-        resolve(filePath);
+        resolve(fileName);
       });
 
       writeStream.on('error', (error) => {
@@ -318,7 +318,7 @@ exports.generateTransferVoucher = async (voucherData) => {
       doc.end();
 
       writeStream.on('finish', () => {
-        resolve(filePath);
+        resolve(fileName);
       });
 
       writeStream.on('error', (error) => {
@@ -414,7 +414,7 @@ exports.generateFlightVoucher = async (voucherData) => {
       doc.end();
 
       writeStream.on('finish', () => {
-        resolve(filePath);
+        resolve(fileName);
       });
 
       writeStream.on('error', (error) => {
