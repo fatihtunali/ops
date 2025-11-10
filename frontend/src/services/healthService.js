@@ -8,7 +8,9 @@ export const healthService = {
   async checkHealth() {
     try {
       // Health endpoint is at /health (not /api/health)
-      const response = await fetch('http://localhost:5000/health');
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const healthUrl = API_URL.replace('/api', '') + '/health';
+      const response = await fetch(healthUrl);
       const data = await response.json();
 
       if (response.ok) {
