@@ -20,17 +20,6 @@ const calculateTotalCost = (operation_type, costs) => {
   return 0;
 };
 
-/**
- * Calculate margin
- * @param {number} sell_price - Selling price
- * @param {number} total_cost - Total cost
- * @returns {number} - Calculated margin
- */
-const calculateMargin = (sell_price, total_cost) => {
-  const sell = parseFloat(sell_price || 0);
-  const cost = parseFloat(total_cost || 0);
-  return sell - cost;
-};
 
 /**
  * Get all booking tours
@@ -641,8 +630,6 @@ exports.getBookingTourStats = async (req, res) => {
         COUNT(*) FILTER (WHERE payment_status = 'paid') as paid,
         COUNT(*) FILTER (WHERE voucher_issued = true) as vouchers_issued,
         COALESCE(SUM(total_cost), 0) as total_costs,
-        COALESCE(SUM(sell_price), 0) as total_revenue,
-        COALESCE(SUM(margin), 0) as total_margin,
         COALESCE(SUM(paid_amount), 0) as total_paid
       FROM booking_tours
     `);
@@ -659,8 +646,6 @@ exports.getBookingTourStats = async (req, res) => {
         paid: parseInt(stats.paid),
         vouchers_issued: parseInt(stats.vouchers_issued),
         total_costs: parseFloat(stats.total_costs),
-        total_revenue: parseFloat(stats.total_revenue),
-        total_margin: parseFloat(stats.total_margin),
         total_paid: parseFloat(stats.total_paid)
       }
     });

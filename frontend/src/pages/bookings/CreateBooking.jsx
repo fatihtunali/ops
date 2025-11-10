@@ -46,6 +46,7 @@ const CreateBooking = () => {
     travel_date_from: '',
     travel_date_to: '',
     status: BOOKING_STATUS.INQUIRY,
+    markup_percentage: 0,
     traveler_name: '',
     traveler_email: '',
     traveler_phone: '',
@@ -417,6 +418,7 @@ const CreateBooking = () => {
         travel_date_from: formatDateForInput(booking.travel_date_from),
         travel_date_to: formatDateForInput(booking.travel_date_to),
         status: booking.status,
+        markup_percentage: booking.markup_percentage || 0,
         traveler_name: booking.traveler_name || '',
         traveler_email: booking.traveler_email || '',
         traveler_phone: booking.traveler_phone || '',
@@ -612,40 +614,39 @@ const CreateBooking = () => {
       return existingTotals;
     }
 
-    // Otherwise, calculate from services
-    let totalSell = 0;
+    // Calculate total cost from all services (net prices only)
     let totalCost = 0;
 
-    // Sum up all services
+    // Sum up costs from all services
     services.hotels.forEach((hotel) => {
-      totalSell += parseFloat(hotel.sell_price) || 0;
       totalCost += parseFloat(hotel.total_cost) || 0;
     });
 
     services.tours.forEach((tour) => {
-      totalSell += parseFloat(tour.sell_price) || 0;
       totalCost += parseFloat(tour.total_cost) || 0;
     });
 
     services.transfers.forEach((transfer) => {
-      totalSell += parseFloat(transfer.sell_price) || 0;
       totalCost += parseFloat(transfer.cost_price) || 0;
     });
 
     services.flights.forEach((flight) => {
-      totalSell += parseFloat(flight.sell_price) || 0;
       totalCost += parseFloat(flight.cost_price) || 0;
     });
 
     services.entranceFees.forEach((entranceFee) => {
-      totalSell += parseFloat(entranceFee.sell_price) || 0;
       totalCost += parseFloat(entranceFee.total_cost) || 0;
     });
+
+    // Calculate sell price using markup percentage
+    const markupPercent = parseFloat(bookingData.markup_percentage) || 0;
+    const totalSell = totalCost * (1 + markupPercent / 100);
+    const grossProfit = totalSell - totalCost;
 
     return {
       totalSell,
       totalCost,
-      grossProfit: totalSell - totalCost,
+      grossProfit,
     };
   };
 
@@ -1936,6 +1937,45 @@ const CreateBooking = () => {
                   error={errors.pax_count}
                   min="1"
                 />
+              </div>
+
+              {/* Markup Percentage */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-900 mb-1">
+                      Markup Percentage
+                    </label>
+                    <p className="text-xs text-slate-600">
+                      Applied to total cost to calculate sell price
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-slate-500">Total Cost</p>
+                    <p className="text-lg font-bold text-slate-900">{formatCurrency(totals.totalCost)}</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                  <div>
+                    <Input
+                      type="number"
+                      label="Markup %"
+                      value={bookingData.markup_percentage}
+                      onChange={(e) => handleInputChange('markup_percentage', parseFloat(e.target.value) || 0)}
+                      min="0"
+                      step="0.1"
+                      placeholder="e.g., 15"
+                    />
+                  </div>
+                  <div className="bg-white rounded-lg p-3 border border-blue-300">
+                    <p className="text-xs text-slate-500 mb-1">Sell Price</p>
+                    <p className="text-xl font-bold text-blue-600">{formatCurrency(totals.totalSell)}</p>
+                  </div>
+                  <div className="bg-white rounded-lg p-3 border border-green-300">
+                    <p className="text-xs text-slate-500 mb-1">Gross Profit</p>
+                    <p className="text-xl font-bold text-green-600">{formatCurrency(totals.grossProfit)}</p>
+                  </div>
+                </div>
               </div>
 
               {/* Status */}

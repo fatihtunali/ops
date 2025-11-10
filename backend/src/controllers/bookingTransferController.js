@@ -15,7 +15,7 @@ exports.getAllBookingTransfers = async (req, res) => {
         bt.id, bt.booking_id, bt.transfer_type, bt.transfer_date,
         bt.from_location, bt.to_location, bt.pax_count, bt.vehicle_type,
         bt.operation_type, bt.supplier_id, bt.vehicle_id,
-        bt.cost_price, bt.sell_price, bt.margin,
+        bt.cost_price,
         bt.payment_status, bt.paid_amount, bt.confirmation_number,
         bt.voucher_issued, bt.notes, bt.created_at,
         bt.flight_number, bt.flight_time, bt.terminal,
@@ -58,8 +58,6 @@ exports.getAllBookingTransfers = async (req, res) => {
     const transfers = result.rows.map(transfer => ({
       ...transfer,
       cost_price: transfer.cost_price ? parseFloat(transfer.cost_price) : null,
-      sell_price: transfer.sell_price ? parseFloat(transfer.sell_price) : null,
-      margin: transfer.margin ? parseFloat(transfer.margin) : null,
       paid_amount: transfer.paid_amount ? parseFloat(transfer.paid_amount) : null,
       transfer_date: transfer.transfer_date,
       created_at: formatDateTime(transfer.created_at)
@@ -95,7 +93,7 @@ exports.getBookingTransferById = async (req, res) => {
         bt.id, bt.booking_id, bt.transfer_type, bt.transfer_date,
         bt.from_location, bt.to_location, bt.pax_count, bt.vehicle_type,
         bt.operation_type, bt.supplier_id, bt.vehicle_id,
-        bt.cost_price, bt.sell_price, bt.margin,
+        bt.cost_price,
         bt.payment_status, bt.paid_amount, bt.confirmation_number,
         bt.voucher_issued, bt.notes, bt.created_at,
         bt.flight_number, bt.flight_time, bt.terminal,
@@ -120,8 +118,6 @@ exports.getBookingTransferById = async (req, res) => {
 
     const transfer = result.rows[0];
     transfer.cost_price = transfer.cost_price ? parseFloat(transfer.cost_price) : null;
-    transfer.sell_price = transfer.sell_price ? parseFloat(transfer.sell_price) : null;
-    transfer.margin = transfer.margin ? parseFloat(transfer.margin) : null;
     transfer.paid_amount = transfer.paid_amount ? parseFloat(transfer.paid_amount) : null;
     transfer.created_at = formatDateTime(transfer.created_at);
 
@@ -154,7 +150,7 @@ exports.getTransfersByBookingId = async (req, res) => {
         bt.id, bt.booking_id, bt.transfer_type, bt.transfer_date,
         bt.from_location, bt.to_location, bt.pax_count, bt.vehicle_type,
         bt.operation_type, bt.supplier_id, bt.vehicle_id,
-        bt.cost_price, bt.sell_price, bt.margin,
+        bt.cost_price,
         bt.payment_status, bt.paid_amount, bt.confirmation_number,
         bt.voucher_issued, bt.notes, bt.created_at,
         ts.name as supplier_name,
@@ -171,8 +167,6 @@ exports.getTransfersByBookingId = async (req, res) => {
     const transfers = result.rows.map(transfer => ({
       ...transfer,
       cost_price: transfer.cost_price ? parseFloat(transfer.cost_price) : null,
-      sell_price: transfer.sell_price ? parseFloat(transfer.sell_price) : null,
-      margin: transfer.margin ? parseFloat(transfer.margin) : null,
       paid_amount: transfer.paid_amount ? parseFloat(transfer.paid_amount) : null,
       created_at: formatDateTime(transfer.created_at)
     }));
@@ -212,8 +206,6 @@ exports.createBookingTransfer = async (req, res) => {
       supplier_id,
       vehicle_id,
       cost_price,
-
-      margin,
       payment_status,
       paid_amount,
       confirmation_number,
@@ -405,8 +397,6 @@ exports.updateBookingTransfer = async (req, res) => {
       supplier_id,
       vehicle_id,
       cost_price,
-
-      margin,
       payment_status,
       paid_amount,
       confirmation_number,
@@ -564,11 +554,6 @@ exports.updateBookingTransfer = async (req, res) => {
     if (cost_price !== undefined) {
       updateFields.push(`cost_price = $${paramCount}`);
       params.push(cost_price);
-      paramCount++;
-    }
-    if (margin !== undefined) {
-      updateFields.push(`margin = $${paramCount}`);
-      params.push(margin);
       paramCount++;
     }
     if (payment_status !== undefined) {

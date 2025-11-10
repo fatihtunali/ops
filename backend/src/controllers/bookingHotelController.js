@@ -395,16 +395,6 @@ exports.update = async (req, res) => {
       });
     }
 
-    if (sell_price !== undefined && sell_price !== null && (isNaN(sell_price) || parseFloat(sell_price) < 0)) {
-      return res.status(400).json({
-        success: false,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'sell_price must be a valid positive number'
-        }
-      });
-    }
-
     if (paid_amount !== undefined && paid_amount !== null && (isNaN(paid_amount) || parseFloat(paid_amount) < 0)) {
       return res.status(400).json({
         success: false,
