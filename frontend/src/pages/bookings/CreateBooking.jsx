@@ -1041,17 +1041,6 @@ const CreateBooking = () => {
       // Calculate total cost
       updated.total_cost = costPerNight * nights * rooms;
 
-      // Auto-calculate sell price with 100 EUR markup per room per night (unless manually set)
-      if (field !== 'sell_price') {
-        const markup = 100; // EUR per room per night
-        updated.sell_price = updated.total_cost + (markup * nights * rooms);
-      }
-
-      // Auto-calculate margin
-      const sellPrice = parseFloat(updated.sell_price) || 0;
-      const totalCost = parseFloat(updated.total_cost) || 0;
-      updated.margin = sellPrice - totalCost;
-
       return updated;
     });
   };
@@ -1077,8 +1066,6 @@ const CreateBooking = () => {
       number_of_rooms: 1,
       cost_per_night: 0,
       total_cost: 0,
-      sell_price: 0,
-      margin: 0,
       payment_status: 'pending',
       paid_amount: 0,
       payment_due_date: '',
@@ -1272,18 +1259,6 @@ const CreateBooking = () => {
         }
       }
 
-      // Auto-calculate sell price with 30% markup (unless manually set)
-      if (field !== 'sell_price') {
-        const totalCost = parseFloat(updated.total_cost) || 0;
-        const markup = 0.30; // 30% markup
-        updated.sell_price = totalCost * (1 + markup);
-      }
-
-      // Auto-calculate margin
-      const sellPrice = parseFloat(updated.sell_price) || 0;
-      const totalCost = parseFloat(updated.total_cost) || 0;
-      updated.margin = sellPrice - totalCost;
-
       return updated;
     });
   };
@@ -1307,8 +1282,6 @@ const CreateBooking = () => {
       entrance_fees: 0,
       other_costs: 0,
       total_cost: 0,
-      sell_price: 0,
-      margin: 0,
       payment_status: 'pending',
       paid_amount: 0,
       payment_due_date: '',
@@ -1396,18 +1369,6 @@ const CreateBooking = () => {
         }
       }
 
-      // Auto-calculate sell price with 30% markup (unless manually set)
-      if (field !== 'sell_price') {
-        const costPrice = parseFloat(updated.cost_price) || 0;
-        const markup = 0.30; // 30% markup
-        updated.sell_price = costPrice * (1 + markup);
-      }
-
-      // Auto-calculate margin
-      const sellPrice = parseFloat(updated.sell_price) || 0;
-      const costPrice = parseFloat(updated.cost_price) || 0;
-      updated.margin = sellPrice - costPrice;
-
       return updated;
     });
   };
@@ -1426,8 +1387,6 @@ const CreateBooking = () => {
       supplier_id: '',
       vehicle_id: '',
       cost_price: 0,
-      sell_price: 0,
-      margin: 0,
       payment_status: 'pending',
       paid_amount: 0,
       confirmation_number: '',
@@ -1481,14 +1440,6 @@ const CreateBooking = () => {
   const handleFlightFormChange = (field, value) => {
     setFlightForm((prev) => {
       const updated = { ...prev, [field]: value };
-
-      // Auto-calculate margin
-      if (field === 'sell_price' || field === 'cost_price') {
-        const sellPrice = parseFloat(updated.sell_price) || 0;
-        const costPrice = parseFloat(updated.cost_price) || 0;
-        updated.margin = sellPrice - costPrice;
-      }
-
       return updated;
     });
   };
@@ -1503,8 +1454,6 @@ const CreateBooking = () => {
       to_airport: '',
       pax_count: 1,
       cost_price: 0,
-      sell_price: 0,
-      margin: 0,
       payment_status: 'pending',
       paid_amount: 0,
       pnr: '',
@@ -2150,7 +2099,7 @@ const CreateBooking = () => {
                       </div>
 
                       {/* Pricing */}
-                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                           <Input
                             type="number"
@@ -2180,24 +2129,6 @@ const CreateBooking = () => {
                             className="bg-gray-100"
                           />
                         </div>
-                        <div>
-                          <Input
-                            type="number"
-                            label="Sell Price"
-                            value={hotelForm.sell_price}
-                            onChange={(e) => handleHotelFormChange('sell_price', e.target.value)}
-                            min="0"
-                            step="0.01"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Margin Display */}
-                      <div className="bg-white rounded-lg p-3 border border-slate-200">
-                        <p className="text-xs text-slate-500 uppercase">Margin</p>
-                        <p className={`text-lg font-bold ${hotelForm.margin >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          {formatCurrency(hotelForm.margin)}
-                        </p>
                       </div>
 
                       {/* Optional Fields (Collapsible) */}
@@ -2318,12 +2249,9 @@ const CreateBooking = () => {
                                   </p>
                                 </div>
                                 <div>
-                                  <p className="text-slate-500">Cost / Sell / Margin</p>
-                                  <p className="text-slate-900">
-                                    {formatCurrency(hotel.total_cost)} / {formatCurrency(hotel.sell_price)} /
-                                    <span className={hotel.margin >= 0 ? 'text-green-600' : 'text-red-600'}>
-                                      {' '}{formatCurrency(hotel.margin)}
-                                    </span>
+                                  <p className="text-slate-500">Total Cost</p>
+                                  <p className="text-slate-900 font-semibold">
+                                    {formatCurrency(hotel.total_cost)}
                                   </p>
                                 </div>
                               </div>
@@ -2642,35 +2570,15 @@ const CreateBooking = () => {
                       )}
 
                       {/* Pricing */}
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
-                          <Input
-                            type="number"
-                            label="Total Cost"
-                            value={tourForm.total_cost}
-                            readOnly
-                            disabled
-                            className="bg-gray-100"
-                          />
-                        </div>
-                        <div>
-                          <Input
-                            type="number"
-                            label="Sell Price"
-                            value={tourForm.sell_price}
-                            onChange={(e) => handleTourFormChange('sell_price', e.target.value)}
-                            min="0"
-                            step="0.01"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-2">Margin</label>
-                          <div className="px-3 py-2 bg-gray-100 border border-slate-300 rounded-lg">
-                            <span className={`font-bold ${tourForm.margin >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                              {formatCurrency(tourForm.margin)}
-                            </span>
-                          </div>
-                        </div>
+                      <div>
+                        <Input
+                          type="number"
+                          label="Total Cost"
+                          value={tourForm.total_cost}
+                          readOnly
+                          disabled
+                          className="bg-gray-100"
+                        />
                       </div>
 
                       {/* Optional Fields */}
@@ -2780,15 +2688,9 @@ const CreateBooking = () => {
                                   </p>
                                 </div>
                                 <div>
-                                  <p className="text-slate-500">Cost / Sell</p>
-                                  <p className="text-slate-900">
-                                    {formatCurrency(tour.total_cost)} / {formatCurrency(tour.sell_price)}
-                                  </p>
-                                </div>
-                                <div>
-                                  <p className="text-slate-500">Margin</p>
-                                  <p className={tour.margin >= 0 ? 'text-green-600 font-medium' : 'text-red-600 font-medium'}>
-                                    {formatCurrency(tour.margin)}
+                                  <p className="text-slate-500">Total Cost</p>
+                                  <p className="text-slate-900 font-semibold">
+                                    {formatCurrency(tour.total_cost)}
                                   </p>
                                 </div>
                               </div>
@@ -3044,35 +2946,15 @@ const CreateBooking = () => {
                       )}
 
                       {/* Pricing */}
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
-                          <Input
-                            type="number"
-                            label="Cost Price"
-                            value={transferForm.cost_price}
-                            onChange={(e) => handleTransferFormChange('cost_price', e.target.value)}
-                            min="0"
-                            step="0.01"
-                          />
-                        </div>
-                        <div>
-                          <Input
-                            type="number"
-                            label="Sell Price"
-                            value={transferForm.sell_price}
-                            onChange={(e) => handleTransferFormChange('sell_price', e.target.value)}
-                            min="0"
-                            step="0.01"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-2">Margin</label>
-                          <div className="px-3 py-2 bg-gray-100 border border-slate-300 rounded-lg">
-                            <span className={`font-bold ${transferForm.margin >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                              {formatCurrency(transferForm.margin)}
-                            </span>
-                          </div>
-                        </div>
+                      <div>
+                        <Input
+                          type="number"
+                          label="Cost Price"
+                          value={transferForm.cost_price}
+                          onChange={(e) => handleTransferFormChange('cost_price', e.target.value)}
+                          min="0"
+                          step="0.01"
+                        />
                       </div>
 
                       {/* Optional Fields */}
@@ -3180,12 +3062,9 @@ const CreateBooking = () => {
                                   </p>
                                 </div>
                                 <div>
-                                  <p className="text-slate-500">Cost / Sell / Margin</p>
-                                  <p className="text-slate-900">
-                                    {formatCurrency(transfer.cost_price)} / {formatCurrency(transfer.sell_price)} /
-                                    <span className={transfer.margin >= 0 ? 'text-green-600 font-medium' : 'text-red-600 font-medium'}>
-                                      {' '}{formatCurrency(transfer.margin)}
-                                    </span>
+                                  <p className="text-slate-500">Cost Price</p>
+                                  <p className="text-slate-900 font-semibold">
+                                    {formatCurrency(transfer.cost_price)}
                                   </p>
                                 </div>
                               </div>
@@ -3314,35 +3193,15 @@ const CreateBooking = () => {
                       </div>
 
                       {/* Pricing */}
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
-                          <Input
-                            type="number"
-                            label="Cost Price"
-                            value={flightForm.cost_price}
-                            onChange={(e) => handleFlightFormChange('cost_price', e.target.value)}
-                            min="0"
-                            step="0.01"
-                          />
-                        </div>
-                        <div>
-                          <Input
-                            type="number"
-                            label="Sell Price"
-                            value={flightForm.sell_price}
-                            onChange={(e) => handleFlightFormChange('sell_price', e.target.value)}
-                            min="0"
-                            step="0.01"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-2">Margin</label>
-                          <div className="px-3 py-2 bg-gray-100 border border-slate-300 rounded-lg">
-                            <span className={`font-bold ${flightForm.margin >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                              {formatCurrency(flightForm.margin)}
-                            </span>
-                          </div>
-                        </div>
+                      <div>
+                        <Input
+                          type="number"
+                          label="Cost Price"
+                          value={flightForm.cost_price}
+                          onChange={(e) => handleFlightFormChange('cost_price', e.target.value)}
+                          min="0"
+                          step="0.01"
+                        />
                       </div>
 
                       {/* Optional Fields */}
@@ -3466,12 +3325,9 @@ const CreateBooking = () => {
                                   </p>
                                 </div>
                                 <div>
-                                  <p className="text-slate-500">Cost / Sell / Margin</p>
-                                  <p className="text-slate-900">
-                                    {formatCurrency(flight.cost_price)} / {formatCurrency(flight.sell_price)} /
-                                    <span className={flight.margin >= 0 ? 'text-green-600 font-medium' : 'text-red-600 font-medium'}>
-                                      {' '}{formatCurrency(flight.margin)}
-                                    </span>
+                                  <p className="text-slate-500">Cost Price</p>
+                                  <p className="text-slate-900 font-semibold">
+                                    {formatCurrency(flight.cost_price)}
                                   </p>
                                 </div>
                               </div>
