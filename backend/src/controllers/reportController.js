@@ -58,18 +58,26 @@ exports.getMonthlyPL = async (req, res) => {
         AND b.travel_date_from <= $2
     `, [startDate, endDateStr]);
 
-    // Get operational expenses
+    // Get operational expenses with currency conversion to EUR
     const expensesQuery = await pool.query(`
       SELECT
         category,
-        COALESCE(SUM(amount), 0) as total
+        COALESCE(SUM(
+          CASE currency
+            WHEN 'EUR' THEN amount
+            WHEN 'USD' THEN amount * 0.92
+            WHEN 'GBP' THEN amount * 1.17
+            WHEN 'TRY' THEN amount * 0.027
+            ELSE amount
+          END
+        ), 0) as total
       FROM operational_expenses
       WHERE expense_date >= $1
         AND expense_date <= $2
       GROUP BY category
     `, [startDate, endDateStr]);
 
-    // Calculate total operational expenses
+    // Calculate total operational expenses (already in EUR)
     const totalOpEx = expensesQuery.rows.reduce((sum, row) => sum + parseFloat(row.total), 0);
 
     // Format expenses by category
