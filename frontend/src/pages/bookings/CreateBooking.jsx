@@ -46,7 +46,7 @@ const CreateBooking = () => {
     travel_date_from: '',
     travel_date_to: '',
     status: BOOKING_STATUS.INQUIRY,
-    markup_percentage: 0,
+    markup_amount: 0,
     traveler_name: '',
     traveler_email: '',
     traveler_phone: '',
@@ -418,7 +418,7 @@ const CreateBooking = () => {
         travel_date_from: formatDateForInput(booking.travel_date_from),
         travel_date_to: formatDateForInput(booking.travel_date_to),
         status: booking.status,
-        markup_percentage: booking.markup_percentage || 0,
+        markup_amount: booking.markup_amount || 0,
         traveler_name: booking.traveler_name || '',
         traveler_email: booking.traveler_email || '',
         traveler_phone: booking.traveler_phone || '',
@@ -638,15 +638,19 @@ const CreateBooking = () => {
       totalCost += parseFloat(entranceFee.total_cost) || 0;
     });
 
-    // Calculate sell price using markup percentage
-    const markupPercent = parseFloat(bookingData.markup_percentage) || 0;
-    const totalSell = totalCost * (1 + markupPercent / 100);
+    // Calculate sell price using markup per person
+    const markupPerPerson = parseFloat(bookingData.markup_amount) || 0;
+    const paxCount = parseInt(bookingData.pax_count) || 1;
+    const totalMarkup = markupPerPerson * paxCount;
+    const totalSell = totalCost + totalMarkup;
     const grossProfit = totalSell - totalCost;
 
     return {
       totalSell,
       totalCost,
       grossProfit,
+      markupPerPerson,
+      totalMarkup,
     };
   };
 
@@ -1939,15 +1943,15 @@ const CreateBooking = () => {
                 />
               </div>
 
-              {/* Markup Percentage */}
+              {/* Markup Per Person */}
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <div className="flex items-center justify-between mb-3">
                   <div>
                     <label className="block text-sm font-medium text-slate-900 mb-1">
-                      Markup Percentage
+                      Markup Per Person
                     </label>
                     <p className="text-xs text-slate-600">
-                      Applied to total cost to calculate sell price
+                      Markup amount per person multiplied by PAX count
                     </p>
                   </div>
                   <div className="text-right">
@@ -1955,25 +1959,34 @@ const CreateBooking = () => {
                     <p className="text-lg font-bold text-slate-900">{formatCurrency(totals.totalCost)}</p>
                   </div>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                   <div>
                     <Input
                       type="number"
-                      label="Markup %"
-                      value={bookingData.markup_percentage}
-                      onChange={(e) => handleInputChange('markup_percentage', parseFloat(e.target.value) || 0)}
+                      label="Markup €/person"
+                      value={bookingData.markup_amount}
+                      onChange={(e) => handleInputChange('markup_amount', parseFloat(e.target.value) || 0)}
                       min="0"
-                      step="0.1"
-                      placeholder="e.g., 15"
+                      placeholder="e.g., 50"
                     />
                   </div>
+                  <div className="bg-white rounded-lg p-3 border border-blue-200">
+                    <p className="text-xs text-slate-500 mb-1">Markup Per Person</p>
+                    <p className="text-lg font-bold text-blue-700">{formatCurrency(totals.markupPerPerson || 0)}</p>
+                  </div>
                   <div className="bg-white rounded-lg p-3 border border-blue-300">
-                    <p className="text-xs text-slate-500 mb-1">Sell Price</p>
-                    <p className="text-xl font-bold text-blue-600">{formatCurrency(totals.totalSell)}</p>
+                    <p className="text-xs text-slate-500 mb-1">Total Markup ({bookingData.pax_count} × {formatCurrency(totals.markupPerPerson || 0)})</p>
+                    <p className="text-lg font-bold text-blue-600">{formatCurrency(totals.totalMarkup || 0)}</p>
                   </div>
                   <div className="bg-white rounded-lg p-3 border border-green-300">
-                    <p className="text-xs text-slate-500 mb-1">Gross Profit</p>
-                    <p className="text-xl font-bold text-green-600">{formatCurrency(totals.grossProfit)}</p>
+                    <p className="text-xs text-slate-500 mb-1">Sell Price</p>
+                    <p className="text-xl font-bold text-green-600">{formatCurrency(totals.totalSell)}</p>
+                  </div>
+                </div>
+                <div className="mt-3 pt-3 border-t border-blue-200">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-slate-600">Gross Profit:</span>
+                    <span className="text-lg font-bold text-green-600">{formatCurrency(totals.grossProfit)}</span>
                   </div>
                 </div>
               </div>

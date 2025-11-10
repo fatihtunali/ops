@@ -215,7 +215,7 @@ exports.create = async (req, res) => {
       travel_date_to,
       status,
       is_confirmed,
-      markup_percentage,
+      markup_amount,
       total_sell_price,
       total_cost_price,
       gross_profit,
@@ -319,7 +319,7 @@ exports.create = async (req, res) => {
         travel_date_to,
         status,
         is_confirmed,
-        markup_percentage,
+        markup_amount,
         total_sell_price,
         total_cost_price,
         gross_profit,
@@ -343,7 +343,7 @@ exports.create = async (req, res) => {
         travel_date_to,
         status,
         is_confirmed,
-        markup_percentage,
+        markup_amount,
         total_sell_price,
         total_cost_price,
         gross_profit,
@@ -364,7 +364,7 @@ exports.create = async (req, res) => {
         travel_date_to || null,
         status || 'inquiry',
         is_confirmed || false,
-        markup_percentage || 0,
+        markup_amount || 0,
         total_sell_price || 0,
         total_cost_price || 0,
         gross_profit || 0,
@@ -434,7 +434,7 @@ exports.update = async (req, res) => {
       travel_date_to,
       status,
       is_confirmed,
-      markup_percentage,
+      markup_amount,
       total_sell_price,
       total_cost_price,
       gross_profit,
@@ -569,9 +569,9 @@ exports.update = async (req, res) => {
       paramCount++;
     }
 
-    if (markup_percentage !== undefined) {
-      updates.push(`markup_percentage = $${paramCount}`);
-      params.push(markup_percentage || 0);
+    if (markup_amount !== undefined) {
+      updates.push(`markup_amount = $${paramCount}`);
+      params.push(markup_amount || 0);
       paramCount++;
     }
 
