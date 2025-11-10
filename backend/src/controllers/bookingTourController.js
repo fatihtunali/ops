@@ -533,9 +533,9 @@ exports.deleteBookingTour = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Check if booking tour exists
+    // Check if booking tour exists and get booking_id
     const existingTour = await query(
-      'SELECT * FROM booking_tours WHERE id = $1',
+      'SELECT id, booking_id FROM booking_tours WHERE id = $1',
       [id]
     );
 
@@ -549,8 +549,15 @@ exports.deleteBookingTour = async (req, res) => {
       });
     }
 
+    const bookingId = existingTour.rows[0].booking_id;
+
     // Delete booking tour (hard delete due to CASCADE constraint)
     await query('DELETE FROM booking_tours WHERE id = $1', [id]);
+
+    // Recalculate booking totals
+    if (bookingId) {
+      await query('SELECT calculate_booking_totals($1)', [bookingId]);
+    }
 
     res.json({
       success: true,

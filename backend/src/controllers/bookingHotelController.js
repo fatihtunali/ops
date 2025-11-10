@@ -562,9 +562,9 @@ exports.deleteBookingHotel = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Check if booking hotel exists
+    // Check if booking hotel exists and get booking_id
     const checkResult = await query(
-      'SELECT id FROM booking_hotels WHERE id = $1',
+      'SELECT id, booking_id FROM booking_hotels WHERE id = $1',
       [id]
     );
 
@@ -578,11 +578,18 @@ exports.deleteBookingHotel = async (req, res) => {
       });
     }
 
+    const bookingId = checkResult.rows[0].booking_id;
+
     // Hard delete since this is a booking detail record
     await query(
       'DELETE FROM booking_hotels WHERE id = $1',
       [id]
     );
+
+    // Recalculate booking totals
+    if (bookingId) {
+      await query('SELECT calculate_booking_totals($1)', [bookingId]);
+    }
 
     res.json({
       success: true,

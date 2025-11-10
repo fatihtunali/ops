@@ -568,9 +568,9 @@ exports.deleteBookingFlight = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Check if booking flight exists
+    // Check if booking flight exists and get booking_id
     const checkResult = await query(
-      'SELECT * FROM booking_flights WHERE id = $1',
+      'SELECT id, booking_id FROM booking_flights WHERE id = $1',
       [id]
     );
 
@@ -584,8 +584,15 @@ exports.deleteBookingFlight = async (req, res) => {
       });
     }
 
+    const bookingId = checkResult.rows[0].booking_id;
+
     // Hard delete the booking flight
     await query('DELETE FROM booking_flights WHERE id = $1', [id]);
+
+    // Recalculate booking totals
+    if (bookingId) {
+      await query('SELECT calculate_booking_totals($1)', [bookingId]);
+    }
 
     res.json({
       success: true,

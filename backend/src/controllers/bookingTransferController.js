@@ -663,9 +663,9 @@ exports.deleteBookingTransfer = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Check if transfer exists
+    // Check if transfer exists and get booking_id
     const existingTransfer = await query(
-      'SELECT id FROM booking_transfers WHERE id = $1',
+      'SELECT id, booking_id FROM booking_transfers WHERE id = $1',
       [id]
     );
 
@@ -679,11 +679,18 @@ exports.deleteBookingTransfer = async (req, res) => {
       });
     }
 
+    const bookingId = existingTransfer.rows[0].booking_id;
+
     // Delete the transfer
     await query(
       'DELETE FROM booking_transfers WHERE id = $1',
       [id]
     );
+
+    // Recalculate booking totals
+    if (bookingId) {
+      await query('SELECT calculate_booking_totals($1)', [bookingId]);
+    }
 
     res.json({
       success: true,
