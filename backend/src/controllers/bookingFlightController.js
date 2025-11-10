@@ -168,8 +168,7 @@ exports.create = async (req, res) => {
       to_airport,
       pax_count,
       cost_price,
-      sell_price,
-      margin,
+
       payment_status,
       paid_amount,
       pnr,
@@ -237,12 +236,12 @@ exports.create = async (req, res) => {
       });
     }
 
-    if (sell_price && (isNaN(sell_price) || parseFloat(sell_price) < 0)) {
+    if (cost_price && (isNaN(cost_price) || parseFloat(cost_price) < 0)) {
       return res.status(400).json({
         success: false,
         error: {
           code: 'VALIDATION_ERROR',
-          message: 'Sell price must be a valid positive number'
+          message: 'Cost price must be a valid positive number'
         }
       });
     }
@@ -260,10 +259,10 @@ exports.create = async (req, res) => {
     const result = await query(
       `INSERT INTO booking_flights (
         booking_id, airline, flight_number, departure_date, arrival_date,
-        from_airport, to_airport, pax_count, cost_price, sell_price,
-        margin, payment_status, paid_amount, pnr, ticket_numbers,
+        from_airport, to_airport, pax_count, cost_price,
+        payment_status, paid_amount, pnr, ticket_numbers,
         voucher_issued, notes
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
       RETURNING *`,
       [
         booking_id,
@@ -275,8 +274,6 @@ exports.create = async (req, res) => {
         to_airport || null,
         pax_count || null,
         cost_price || null,
-        sell_price || null,
-        margin || null,
         payment_status || 'pending',
         paid_amount || 0,
         pnr || null,
@@ -339,8 +336,7 @@ exports.update = async (req, res) => {
       to_airport,
       pax_count,
       cost_price,
-      sell_price,
-      margin,
+
       payment_status,
       paid_amount,
       pnr,
@@ -419,17 +415,6 @@ exports.update = async (req, res) => {
       }
     }
 
-    if (sell_price !== undefined && sell_price !== null) {
-      if (isNaN(sell_price) || parseFloat(sell_price) < 0) {
-        return res.status(400).json({
-          success: false,
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: 'Sell price must be a valid positive number'
-          }
-        });
-      }
-    }
 
     if (paid_amount !== undefined && paid_amount !== null) {
       if (isNaN(paid_amount) || parseFloat(paid_amount) < 0) {
@@ -491,16 +476,6 @@ exports.update = async (req, res) => {
     if (cost_price !== undefined) {
       updates.push(`cost_price = $${paramCount}`);
       params.push(cost_price || null);
-      paramCount++;
-    }
-    if (sell_price !== undefined) {
-      updates.push(`sell_price = $${paramCount}`);
-      params.push(sell_price || null);
-      paramCount++;
-    }
-    if (margin !== undefined) {
-      updates.push(`margin = $${paramCount}`);
-      params.push(margin || null);
       paramCount++;
     }
     if (payment_status !== undefined) {

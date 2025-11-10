@@ -215,6 +215,7 @@ exports.create = async (req, res) => {
       travel_date_to,
       status,
       is_confirmed,
+      markup_percentage,
       total_sell_price,
       total_cost_price,
       gross_profit,
@@ -318,6 +319,7 @@ exports.create = async (req, res) => {
         travel_date_to,
         status,
         is_confirmed,
+        markup_percentage,
         total_sell_price,
         total_cost_price,
         gross_profit,
@@ -330,7 +332,7 @@ exports.create = async (req, res) => {
         notes
       ) VALUES (
         generate_booking_code(),
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17
       )
       RETURNING
         id,
@@ -341,6 +343,7 @@ exports.create = async (req, res) => {
         travel_date_to,
         status,
         is_confirmed,
+        markup_percentage,
         total_sell_price,
         total_cost_price,
         gross_profit,
@@ -361,6 +364,7 @@ exports.create = async (req, res) => {
         travel_date_to || null,
         status || 'inquiry',
         is_confirmed || false,
+        markup_percentage || 0,
         total_sell_price || 0,
         total_cost_price || 0,
         gross_profit || 0,
@@ -430,6 +434,7 @@ exports.update = async (req, res) => {
       travel_date_to,
       status,
       is_confirmed,
+      markup_percentage,
       total_sell_price,
       total_cost_price,
       gross_profit,
@@ -561,6 +566,12 @@ exports.update = async (req, res) => {
     if (is_confirmed !== undefined) {
       updates.push(`is_confirmed = $${paramCount}`);
       params.push(is_confirmed);
+      paramCount++;
+    }
+
+    if (markup_percentage !== undefined) {
+      updates.push(`markup_percentage = $${paramCount}`);
+      params.push(markup_percentage || 0);
       paramCount++;
     }
 

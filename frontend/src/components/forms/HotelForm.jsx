@@ -21,8 +21,6 @@ const HotelForm = ({
     number_of_rooms: 1,
     cost_per_night: 0,
     total_cost: 0,
-    sell_price: 0,
-    margin: 0,
     payment_status: 'pending',
     paid_amount: 0,
     payment_due_date: '',
@@ -73,13 +71,6 @@ const HotelForm = ({
         const nights = parseInt(updated.nights) || 0;
         const rooms = parseInt(updated.number_of_rooms) || 1;
         updated.total_cost = costPerNight * nights * rooms;
-      }
-
-      // Auto-calculate margin when costs change
-      if (field === 'sell_price' || field === 'total_cost') {
-        const sellPrice = parseFloat(updated.sell_price) || 0;
-        const totalCost = parseFloat(updated.total_cost) || 0;
-        updated.margin = sellPrice - totalCost;
       }
 
       return updated;
@@ -245,29 +236,6 @@ const HotelForm = ({
               className="bg-slate-100"
             />
           </div>
-          <div>
-            <Input
-              type="number"
-              label="Sell Price"
-              value={formData.sell_price}
-              onChange={(e) => handleChange('sell_price', e.target.value)}
-              min="0"
-              step="0.01"
-            />
-          </div>
-        </div>
-
-        {/* Margin Display */}
-        <div className="bg-white rounded-lg p-4 border border-slate-200">
-          <p className="text-xs text-slate-500 uppercase mb-1">Profit Margin</p>
-          <p className={`text-xl font-bold ${formData.margin >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-            {formatCurrency(formData.margin)}
-            {formData.sell_price > 0 && (
-              <span className="text-sm ml-2 text-slate-600">
-                ({((formData.margin / formData.sell_price) * 100).toFixed(1)}%)
-              </span>
-            )}
-          </p>
         </div>
 
         {/* Optional Fields (Collapsible) */}

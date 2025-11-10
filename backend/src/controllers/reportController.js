@@ -163,9 +163,7 @@ exports.getBookingProfitability = async (req, res) => {
         servicesByType[service.service_type].push({
           name: service.service_name,
           date: service.service_date,
-          cost_price: parseFloat(service.cost_price),
-          sell_price: parseFloat(service.sell_price),
-          margin: parseFloat(service.margin)
+          cost_price: parseFloat(service.cost_price)
         });
       }
     });
@@ -422,46 +420,36 @@ exports.getSalesByService = async (req, res) => {
         SELECT
           'hotel' as service_type,
           bh.booking_id,
-          bh.cost_per_night * bh.nights * bh.number_of_rooms as total_cost,
-          bh.sell_price as total_revenue,
-          (bh.sell_price - (bh.cost_per_night * bh.nights * bh.number_of_rooms)) as margin
+          bh.total_cost as total_cost
         FROM booking_hotels bh
         UNION ALL
         SELECT
           'tour' as service_type,
           bt.booking_id,
-          bt.total_cost as total_cost,
-          bt.sell_price as total_revenue,
-          bt.margin as margin
+          bt.total_cost as total_cost
         FROM booking_tours bt
         UNION ALL
         SELECT
           'transfer' as service_type,
           bt.booking_id,
-          bt.cost_price as total_cost,
-          bt.sell_price as total_revenue,
-          bt.margin as margin
+          bt.cost_price as total_cost
         FROM booking_transfers bt
         UNION ALL
         SELECT
           'flight' as service_type,
           bf.booking_id,
-          bf.cost_price as total_cost,
-          bf.sell_price as total_revenue,
-          (bf.sell_price - bf.cost_price) as margin
+          bf.cost_price as total_cost
         FROM booking_flights bf
       )
       SELECT
         service_type,
         COUNT(*) as service_count,
-        COALESCE(SUM(total_cost), 0) as total_cost,
-        COALESCE(SUM(total_revenue), 0) as total_revenue,
-        COALESCE(SUM(margin), 0) as total_profit
+        COALESCE(SUM(total_cost), 0) as total_cost
       FROM all_services s
       JOIN bookings b ON s.booking_id = b.id
       WHERE b.is_confirmed = true ${dateFilter}
       GROUP BY service_type
-      ORDER BY total_revenue DESC
+      ORDER BY total_cost DESC
     `;
 
     const result = await pool.query(query, params);
@@ -473,12 +461,7 @@ exports.getSalesByService = async (req, res) => {
         services: result.rows.map(row => ({
           service_type: row.service_type,
           service_count: parseInt(row.service_count),
-          total_cost: parseFloat(row.total_cost),
-          total_revenue: parseFloat(row.total_revenue),
-          total_profit: parseFloat(row.total_profit),
-          profit_margin_percentage: row.total_revenue > 0
-            ? ((row.total_profit / row.total_revenue) * 100).toFixed(2)
-            : 0
+          total_cost: parseFloat(row.total_cost)
         }))
       }
     });

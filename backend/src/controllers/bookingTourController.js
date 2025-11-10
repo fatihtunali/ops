@@ -230,7 +230,7 @@ exports.createBookingTour = async (req, res) => {
       vehicle_cost,
       entrance_fees,
       other_costs,
-      sell_price,
+
       payment_status = 'pending',
       paid_amount = 0,
       payment_due_date,
@@ -328,23 +328,20 @@ exports.createBookingTour = async (req, res) => {
       other_costs
     });
 
-    // Calculate margin
-    const margin = calculateMargin(sell_price, total_cost);
-
     // Insert new booking tour
     const result = await query(
       `INSERT INTO booking_tours
        (booking_id, tour_name, tour_date, duration, pax_count, operation_type,
         supplier_id, supplier_cost, guide_id, guide_cost, vehicle_id, vehicle_cost,
-        entrance_fees, other_costs, total_cost, sell_price, margin,
+        entrance_fees, other_costs, total_cost,
         payment_status, paid_amount, payment_due_date, confirmation_number,
         voucher_issued, notes)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
        RETURNING *`,
       [
         booking_id, tour_name, tour_date, duration, pax_count, operation_type,
         supplier_id, supplier_cost, guide_id, guide_cost, vehicle_id, vehicle_cost,
-        entrance_fees, other_costs, total_cost, sell_price, margin,
+        entrance_fees, other_costs, total_cost,
         payment_status, paid_amount, payment_due_date, confirmation_number,
         voucher_issued, notes
       ]
@@ -394,7 +391,7 @@ exports.updateBookingTour = async (req, res) => {
       vehicle_cost,
       entrance_fees,
       other_costs,
-      sell_price,
+
       payment_status,
       paid_amount,
       payment_due_date,
@@ -482,9 +479,6 @@ exports.updateBookingTour = async (req, res) => {
       other_costs
     });
 
-    // Calculate margin
-    const margin = calculateMargin(sell_price, total_cost);
-
     // Update booking tour
     const result = await query(
       `UPDATE booking_tours
@@ -503,20 +497,18 @@ exports.updateBookingTour = async (req, res) => {
            entrance_fees = $13,
            other_costs = $14,
            total_cost = $15,
-           sell_price = $16,
-           margin = $17,
-           payment_status = $18,
-           paid_amount = $19,
-           payment_due_date = $20,
-           confirmation_number = $21,
-           voucher_issued = $22,
-           notes = $23
-       WHERE id = $24
+           payment_status = $16,
+           paid_amount = $17,
+           payment_due_date = $18,
+           confirmation_number = $19,
+           voucher_issued = $20,
+           notes = $21
+       WHERE id = $22
        RETURNING *`,
       [
         booking_id, tour_name, tour_date, duration, pax_count, operation_type,
         supplier_id, supplier_cost, guide_id, guide_cost, vehicle_id, vehicle_cost,
-        entrance_fees, other_costs, total_cost, sell_price, margin,
+        entrance_fees, other_costs, total_cost,
         payment_status, paid_amount, payment_due_date, confirmation_number,
         voucher_issued, notes, id
       ]

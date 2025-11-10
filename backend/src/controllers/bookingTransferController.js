@@ -212,7 +212,7 @@ exports.createBookingTransfer = async (req, res) => {
       supplier_id,
       vehicle_id,
       cost_price,
-      sell_price,
+
       margin,
       payment_status,
       paid_amount,
@@ -321,13 +321,13 @@ exports.createBookingTransfer = async (req, res) => {
       `INSERT INTO booking_transfers (
         booking_id, transfer_type, transfer_date, from_location, to_location,
         pax_count, vehicle_type, operation_type, supplier_id, vehicle_id,
-        cost_price, sell_price, margin, payment_status, paid_amount,
+        cost_price, payment_status, paid_amount,
         confirmation_number, voucher_issued, notes, flight_number, flight_time, terminal
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
       RETURNING id, booking_id, transfer_type, transfer_date, from_location, to_location,
                 pax_count, vehicle_type, operation_type, supplier_id, vehicle_id,
-                cost_price, sell_price, margin, payment_status, paid_amount,
+                cost_price, payment_status, paid_amount,
                 confirmation_number, voucher_issued, notes, flight_number, flight_time, terminal, created_at`,
       [
         booking_id,
@@ -341,8 +341,6 @@ exports.createBookingTransfer = async (req, res) => {
         supplier_id || null,
         vehicle_id || null,
         cost_price || null,
-        sell_price || null,
-        margin || null,
         payment_status || 'pending',
         paid_amount || 0,
         confirmation_number || null,
@@ -356,8 +354,6 @@ exports.createBookingTransfer = async (req, res) => {
 
     const newTransfer = result.rows[0];
     newTransfer.cost_price = newTransfer.cost_price ? parseFloat(newTransfer.cost_price) : null;
-    newTransfer.sell_price = newTransfer.sell_price ? parseFloat(newTransfer.sell_price) : null;
-    newTransfer.margin = newTransfer.margin ? parseFloat(newTransfer.margin) : null;
     newTransfer.paid_amount = newTransfer.paid_amount ? parseFloat(newTransfer.paid_amount) : null;
     newTransfer.created_at = formatDateTime(newTransfer.created_at);
 
@@ -409,7 +405,7 @@ exports.updateBookingTransfer = async (req, res) => {
       supplier_id,
       vehicle_id,
       cost_price,
-      sell_price,
+
       margin,
       payment_status,
       paid_amount,
@@ -570,11 +566,6 @@ exports.updateBookingTransfer = async (req, res) => {
       params.push(cost_price);
       paramCount++;
     }
-    if (sell_price !== undefined) {
-      updateFields.push(`sell_price = $${paramCount}`);
-      params.push(sell_price);
-      paramCount++;
-    }
     if (margin !== undefined) {
       updateFields.push(`margin = $${paramCount}`);
       params.push(margin);
@@ -640,15 +631,13 @@ exports.updateBookingTransfer = async (req, res) => {
        WHERE id = $${paramCount}
        RETURNING id, booking_id, transfer_type, transfer_date, from_location, to_location,
                  pax_count, vehicle_type, operation_type, supplier_id, vehicle_id,
-                 cost_price, sell_price, margin, payment_status, paid_amount,
+                 cost_price, payment_status, paid_amount,
                  confirmation_number, voucher_issued, notes, flight_number, flight_time, terminal, created_at`,
       params
     );
 
     const updatedTransfer = result.rows[0];
     updatedTransfer.cost_price = updatedTransfer.cost_price ? parseFloat(updatedTransfer.cost_price) : null;
-    updatedTransfer.sell_price = updatedTransfer.sell_price ? parseFloat(updatedTransfer.sell_price) : null;
-    updatedTransfer.margin = updatedTransfer.margin ? parseFloat(updatedTransfer.margin) : null;
     updatedTransfer.paid_amount = updatedTransfer.paid_amount ? parseFloat(updatedTransfer.paid_amount) : null;
     updatedTransfer.created_at = formatDateTime(updatedTransfer.created_at);
 

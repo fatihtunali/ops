@@ -21,8 +21,6 @@ const FlightForm = ({
     pax_count: 1,
     booking_class: 'economy', // economy, business, first
     cost_price: 0,
-    sell_price: 0,
-    margin: 0,
     pnr: '',
     ticket_numbers: '',
     payment_status: 'pending',
@@ -44,13 +42,6 @@ const FlightForm = ({
   const handleChange = (field, value) => {
     setFormData((prev) => {
       const updated = { ...prev, [field]: value };
-
-      // Auto-calculate margin
-      if (field === 'sell_price' || field === 'cost_price') {
-        const sellPrice = parseFloat(updated.sell_price) || 0;
-        const costPrice = parseFloat(updated.cost_price) || 0;
-        updated.margin = sellPrice - costPrice;
-      }
 
       return updated;
     });
@@ -250,35 +241,6 @@ const FlightForm = ({
               step="0.01"
             />
           </div>
-          <div>
-            <Input
-              type="number"
-              label="Sell Price (per person)"
-              value={formData.sell_price}
-              onChange={(e) => handleChange('sell_price', e.target.value)}
-              min="0"
-              step="0.01"
-              required
-            />
-          </div>
-        </div>
-
-        {/* Margin Display */}
-        <div className="bg-white rounded-lg p-4 border border-slate-200">
-          <p className="text-xs text-slate-500 uppercase mb-1">Profit Margin (per person)</p>
-          <p className={`text-xl font-bold ${formData.margin >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-            {formatCurrency(formData.margin)}
-            {formData.sell_price > 0 && (
-              <span className="text-sm ml-2 text-slate-600">
-                ({((formData.margin / formData.sell_price) * 100).toFixed(1)}%)
-              </span>
-            )}
-          </p>
-          {formData.pax_count > 1 && (
-            <p className="text-sm text-slate-600 mt-2">
-              Total Margin: {formatCurrency(formData.margin * formData.pax_count)} ({formData.pax_count} passengers)
-            </p>
-          )}
         </div>
 
         {/* Booking Details */}

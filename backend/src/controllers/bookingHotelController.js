@@ -127,7 +127,6 @@ exports.create = async (req, res) => {
       number_of_rooms,
       cost_per_night,
       total_cost,
-      sell_price,
       payment_status,
       paid_amount,
       payment_due_date,
@@ -215,16 +214,6 @@ exports.create = async (req, res) => {
       });
     }
 
-    if (sell_price !== undefined && (isNaN(sell_price) || parseFloat(sell_price) < 0)) {
-      return res.status(400).json({
-        success: false,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'sell_price must be a valid positive number'
-        }
-      });
-    }
-
     if (paid_amount !== undefined && (isNaN(paid_amount) || parseFloat(paid_amount) < 0)) {
       return res.status(400).json({
         success: false,
@@ -248,19 +237,13 @@ exports.create = async (req, res) => {
       }
     }
 
-    // Auto-calculate margin if both total_cost and sell_price are provided
-    let margin = null;
-    if (sell_price !== undefined && total_cost !== undefined) {
-      margin = parseFloat(sell_price) - parseFloat(total_cost);
-    }
-
     const result = await query(
       `INSERT INTO booking_hotels (
         booking_id, hotel_id, hotel_name, check_in, check_out, nights,
-        room_type, number_of_rooms, cost_per_night, total_cost, sell_price,
-        margin, payment_status, paid_amount, payment_due_date,
+        room_type, number_of_rooms, cost_per_night, total_cost,
+        payment_status, paid_amount, payment_due_date,
         confirmation_number, voucher_issued, notes
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
       RETURNING *`,
       [
         booking_id,
@@ -273,8 +256,6 @@ exports.create = async (req, res) => {
         number_of_rooms || null,
         cost_per_night || null,
         total_cost || null,
-        sell_price || null,
-        margin,
         payment_status || 'pending',
         paid_amount || 0,
         payment_due_date || null,
@@ -336,7 +317,6 @@ exports.update = async (req, res) => {
       number_of_rooms,
       cost_per_night,
       total_cost,
-      sell_price,
       payment_status,
       paid_amount,
       payment_due_date,
@@ -501,22 +481,6 @@ exports.update = async (req, res) => {
     if (total_cost !== undefined) {
       updates.push(`total_cost = $${paramCount}`);
       params.push(total_cost || null);
-      paramCount++;
-    }
-    if (sell_price !== undefined) {
-      updates.push(`sell_price = $${paramCount}`);
-      params.push(sell_price || null);
-      paramCount++;
-    }
-
-    // Auto-calculate margin if total_cost or sell_price is being updated
-    const newTotalCost = total_cost !== undefined ? total_cost : existingRecord.total_cost;
-    const newSellPrice = sell_price !== undefined ? sell_price : existingRecord.sell_price;
-
-    if ((total_cost !== undefined || sell_price !== undefined) && newTotalCost !== null && newSellPrice !== null) {
-      const margin = parseFloat(newSellPrice) - parseFloat(newTotalCost);
-      updates.push(`margin = $${paramCount}`);
-      params.push(margin);
       paramCount++;
     }
 
