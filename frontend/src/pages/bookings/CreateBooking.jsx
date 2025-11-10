@@ -671,11 +671,21 @@ const CreateBooking = () => {
     });
 
     // Convert empty strings to null for date fields (PostgreSQL needs NULL, not empty string)
+    // Also convert DD/MM/YYYY format to YYYY-MM-DD format for database
     const dateFields = ['tour_date', 'transfer_date', 'check_in', 'check_out', 'check_in_date', 'check_out_date',
                         'payment_due_date', 'departure_date', 'arrival_date'];
     dateFields.forEach(field => {
       if (cleaned[field] === '' || cleaned[field] === undefined || cleaned[field] === null) {
         cleaned[field] = null;
+      } else if (typeof cleaned[field] === 'string') {
+        // Check if date is in DD/MM/YYYY format and convert to YYYY-MM-DD
+        const ddmmyyyyRegex = /^(\d{2})\/(\d{2})\/(\d{4})$/;
+        const match = cleaned[field].match(ddmmyyyyRegex);
+        if (match) {
+          const [, day, month, year] = match;
+          cleaned[field] = `${year}-${month}-${day}`;
+        }
+        // If already in YYYY-MM-DD format, leave it as is
       }
     });
 
