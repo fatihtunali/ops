@@ -22,6 +22,7 @@ exports.getAll = async (req, res) => {
         b.travel_date_to,
         b.status,
         b.is_confirmed,
+        b.markup_amount,
         b.total_sell_price,
         b.total_cost_price,
         b.gross_profit,
@@ -99,6 +100,7 @@ exports.getAll = async (req, res) => {
       created_at: formatDateTime(booking.created_at),
       confirmed_at: formatDateTime(booking.confirmed_at),
       completed_at: formatDateTime(booking.completed_at),
+      markup_amount: booking.markup_amount ? parseFloat(booking.markup_amount) : 0,
       total_sell_price: booking.total_sell_price ? parseFloat(booking.total_sell_price) : 0,
       total_cost_price: booking.total_cost_price ? parseFloat(booking.total_cost_price) : 0,
       gross_profit: booking.gross_profit ? parseFloat(booking.gross_profit) : 0,
@@ -144,6 +146,7 @@ exports.getById = async (req, res) => {
         b.travel_date_to,
         b.status,
         b.is_confirmed,
+        b.markup_amount,
         b.total_sell_price,
         b.total_cost_price,
         b.gross_profit,
@@ -181,6 +184,7 @@ exports.getById = async (req, res) => {
     booking.created_at = formatDateTime(booking.created_at);
     booking.confirmed_at = formatDateTime(booking.confirmed_at);
     booking.completed_at = formatDateTime(booking.completed_at);
+    booking.markup_amount = booking.markup_amount ? parseFloat(booking.markup_amount) : 0;
     booking.total_sell_price = booking.total_sell_price ? parseFloat(booking.total_sell_price) : 0;
     booking.total_cost_price = booking.total_cost_price ? parseFloat(booking.total_cost_price) : 0;
     booking.gross_profit = booking.gross_profit ? parseFloat(booking.gross_profit) : 0;
